@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist_Mono, Inter } from "next/font/google"
 
 import "@workspace/ui/globals.css"
+import { Toaster } from "@workspace/ui/components/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { RoleProvider } from "@/lib/context/role-context"
 import { cn } from "@/lib/utils"
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <RoleProvider>{children}</RoleProvider>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

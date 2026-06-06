@@ -1,4 +1,9 @@
-import type { Prisma } from "@prisma/client"
+import type {
+  Classification as PrismaClassification,
+  EnrolmentStatus as PrismaEnrolmentStatus,
+  FileType as PrismaFileType,
+  Prisma,
+} from "@prisma/client"
 
 export { Classification, EnrolmentStatus, FileType, Role } from "@prisma/client"
 
@@ -15,32 +20,73 @@ export type ApiResponse<T> =
   | { data: T; error: null }
   | { data: null; error: string }
 
-export type StudentWithRelations = Prisma.StudentGetPayload<{
-  include: {
-    user: {
-      select: {
-        id: true
-        fullName: true
-        email: true
-      }
-    }
-    programme: {
-      select: {
-        id: true
-        name: true
-        code: true
-      }
-    }
-    fee: {
-      select: {
-        id: true
-        outstanding: true
-        isOverdue: true
-        dueDate: true
-      }
-    }
+export type Pagination = {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export type PaginatedApiResponse<T> =
+  | { data: T; error: null; pagination: Pagination }
+  | { data: null; error: string }
+
+export type StudentWithRelations = {
+  id: string
+  studentId: string
+  academicYear: number
+  status: PrismaEnrolmentStatus
+  enrolledAt: string
+  dateOfBirth: string
+  user: {
+    id: string
+    fullName: string
+    email: string
   }
-}>
+  programme: {
+    id: string
+    name: string
+    code: string
+  }
+  fee: {
+    id: string
+    outstanding: number
+    isOverdue: boolean
+    dueDate: string
+    totalAmount: number
+    amountPaid: number
+  } | null
+}
+
+export type StudentDetail = StudentWithRelations & {
+  submissions: Array<{
+    id: string
+    fileUrl: string
+    fileType: PrismaFileType
+    submittedAt: string
+    isLate: boolean
+    assessment: {
+      id: string
+      title: string
+      deadline: string
+    }
+  }>
+  results: Array<{
+    id: string
+    grade: number
+    classification: PrismaClassification
+    isPublished: boolean
+    gradedAt: string
+    assessment: {
+      id: string
+      title: string
+    }
+  }>
+}
+
+export type StudentMutationResponse =
+  | { data: StudentWithRelations; error: null; note?: string }
+  | { data: null; error: string }
 
 export type AssessmentWithRelations = Prisma.AssessmentGetPayload<{
   include: {
