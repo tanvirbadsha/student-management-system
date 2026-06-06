@@ -140,46 +140,73 @@ export type OverdueFeeRecord = {
   }
 }
 
-export type AssessmentWithRelations = Prisma.AssessmentGetPayload<{
-  include: {
-    module: {
-      select: {
-        id: true
-        title: true
-        code: true
-      }
-    }
-    createdBy: {
-      select: {
-        id: true
-        fullName: true
-      }
-    }
+export type AssessmentWithRelations = {
+  id: string
+  title: string
+  deadline: string
+  createdAt: string
+  updatedAt: string
+  module: {
+    id: string
+    programmeId: string
+    title: string
+    code: string
   }
-}>
+  createdBy: {
+    id: string
+    fullName: string
+  }
+  _count: {
+    submissions: number
+  }
+}
 
-export type SubmissionWithRelations = Prisma.SubmissionGetPayload<{
-  include: {
-    student: {
-      select: {
-        id: true
-        studentId: true
-        user: {
-          select: {
-            fullName: true
-          }
-        }
-      }
-    }
-    assessment: {
-      select: {
-        id: true
-        title: true
-        deadline: true
-      }
+export type SubmissionResult = {
+  grade: number
+  classification: PrismaClassification
+  isPublished: boolean
+}
+
+export type SubmissionWithRelations = {
+  id: string
+  assessmentId: string
+  studentId: string
+  fileUrl: string
+  fileType: PrismaFileType
+  submittedAt: string
+  isLate: boolean
+  updatedAt: string
+  student: {
+    id: string
+    studentId: string
+    user: {
+      fullName: string
     }
   }
-}>
+  assessment: {
+    id: string
+    title: string
+    deadline: string
+    module: {
+      id: string
+      title: string
+      code: string
+    }
+  }
+  result: SubmissionResult | null
+}
+
+export type AssessmentDetail = AssessmentWithRelations & {
+  submissions: SubmissionWithRelations[]
+}
+
+export type AssessmentMutationResponse =
+  | {
+      data: AssessmentWithRelations
+      error: null
+      warning?: string
+    }
+  | { data: null; error: string }
 
 export type ResultWithRelations = Prisma.ResultGetPayload<{
   include: {
