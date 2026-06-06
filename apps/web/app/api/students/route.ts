@@ -55,11 +55,13 @@ export async function GET(request: Request) {
 
   const search = searchParams.get("search")?.trim() ?? ""
   const programmeId = searchParams.get("programme")?.trim() ?? ""
+  const userId = searchParams.get("userId")?.trim() ?? ""
   const page = pageResult.data
   const limit = limitResult.data
 
   const where: Prisma.StudentWhereInput = {
     ...(programmeId !== "" ? { programmeId } : {}),
+    ...(userId !== "" ? { userId } : {}),
     ...(status !== "" ? { status: status as EnrolmentStatus } : {}),
     ...(search !== ""
       ? {

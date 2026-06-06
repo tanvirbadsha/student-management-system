@@ -22,6 +22,7 @@ export function formatDate(date: Date | string): string {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   }).format(new Date(date))
 }
 
@@ -33,6 +34,7 @@ export function formatDateTime(date: Date | string): string {
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
+    timeZone: "UTC",
   }).format(new Date(date))
 }
 
@@ -60,11 +62,28 @@ export function isOverdue(
   dueDate: Date,
   outstanding: number | Prisma.Decimal
 ): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const now = new Date()
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  )
+  const normalizedDueDate = new Date(
+    Date.UTC(
+      dueDate.getUTCFullYear(),
+      dueDate.getUTCMonth(),
+      dueDate.getUTCDate()
+    )
+  )
 
   const outstandingAmount =
     typeof outstanding === "number" ? outstanding : outstanding.toNumber()
 
-  return dueDate.getTime() < today.getTime() && outstandingAmount > 0
+  return normalizedDueDate.getTime() < today.getTime() && outstandingAmount > 0
+}
+
+export function utcDateInputValue(date = new Date()): string {
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-")
 }

@@ -88,6 +88,58 @@ export type StudentMutationResponse =
   | { data: StudentWithRelations; error: null; note?: string }
   | { data: null; error: string }
 
+export type PaymentRecord = {
+  id: string
+  feeId: string
+  amount: number
+  paymentDate: string
+  referenceNumber: string
+  createdAt: string
+}
+
+export type FeeRecord = {
+  id: string
+  studentId: string
+  totalAmount: number
+  amountPaid: number
+  outstanding: number
+  dueDate: string
+  isOverdue: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type FeeWithPayments = FeeRecord & {
+  percentagePaid: number
+  payments: PaymentRecord[]
+}
+
+export type FeeDetailsData = {
+  fee: FeeWithPayments
+}
+
+export type PaymentMutationData = {
+  payment: PaymentRecord
+  updatedFee: FeeRecord
+}
+
+export type OverdueFeeRecord = {
+  id: string
+  studentId: string
+  fullName: string
+  programme: {
+    id: string
+    name: string
+    code: string
+  }
+  fee: {
+    outstanding: number
+    dueDate: string
+    amountPaid: number
+    totalAmount: number
+  }
+}
+
 export type AssessmentWithRelations = Prisma.AssessmentGetPayload<{
   include: {
     module: {

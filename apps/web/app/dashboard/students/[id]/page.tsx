@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft01Icon,
   Edit02Icon,
@@ -43,6 +43,7 @@ import {
 import { toast } from "sonner"
 
 import { StatusBadge } from "@/components/students/status-badge"
+import { StudentFees } from "@/components/fees/student-fees"
 import { useRole } from "@/lib/context/role-context"
 import type {
   ApiResponse,
@@ -54,6 +55,7 @@ import { formatDate } from "@/lib/utils"
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { role, userId, isStaff, isStudent } = useRole()
   const [student, setStudent] = useState<StudentDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -253,7 +255,9 @@ export default function StudentDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs
+        defaultValue={searchParams.get("tab") === "fees" ? "fees" : "overview"}
+      >
         <TabsList
           className="w-full justify-start overflow-x-auto"
           variant="line"
@@ -302,7 +306,7 @@ export default function StudentDetailPage() {
         </TabsContent>
 
         <TabsContent value="fees" className="mt-4">
-          <PlaceholderCard>Fee details — see Prompt 5</PlaceholderCard>
+          <StudentFees studentId={student.id} isStaff={isStaff} />
         </TabsContent>
 
         <TabsContent value="submissions" className="mt-4">
