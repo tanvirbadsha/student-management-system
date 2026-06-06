@@ -1,0 +1,276 @@
+// ============================================================
+// Student Management System — Registry Module
+// Prisma Schema
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  STAFF
+  STUDENT
+}
+
+enum EnrolmentStatus {
+  ENROLLED
+  DEFERRED
+  WITHDRAWN
+  COMPLETED
+}
+
+enum Classification {
+  FAIL
+  PASS
+  MERIT
+  DISTINCTION
+}
+
+enum FileType {
+  PDF
+  DOCX
+}
+
+// ============================================================
+// USER
+// Unified auth table for both staff and students.
+// Role field drives which views and actions are available.
+// ============================================================
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String   @map("full_name")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student      Student?
+  assessments  Assessment[] @relation("CreatedByUser")
+
+  @@map("users")
+}
+
+// ============================================================
+// PROGRAMME
+// Academic programme (e.g. BSc Computer Science).
+// Defines the base fee amount that is assigned to students
+// on enrolment. Contains one or more Modules.
+// ============================================================
+
+model Programme {
+  id             String   @id @default(uuid())
+  name           String
+  code           String   @unique          // e.g. BSC-CS
+  feeAmount      Decimal  @map("fee_amount") @db.Decimal(10, 2)
+  durationYears  Int      @map("duration_years")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  students  Student[]
+  modules   Module[]
+
+  @@map("programmes")
+}
+
+// ============================================================
+// STUDENT
+// Registry profile for a student. Extends User with academic
+// information. The studentId is auto-generated in the format
+// SMS-YYYY-XXXX and is the human-readable identifier shown
+// across the UI and on official documents.
+// ============================================================
+
+model Student {
+  id            String          @id @default(uuid())
+  userId        String          @unique @map("user_id")
+  programmeId   String          @map("programme_id")
+  studentId     String          @unique @map("student_id")   // SMS-2025-0001
+  academicYear  Int             @map("academic_year")
+  status        EnrolmentStatus @default(ENROLLED)
+  dateOfBirth   DateTime        @map("date_of_birth")        @db.Date
+  enrolledAt    DateTime        @default(now()) @map("enrolled_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programme   Programme     @relation(fields: [programmeId], references: [id])
+  fee         Fee?
+  submissions Submission[]
+  results     Result[]
+
+  @@map("students")
+}
+
+// ============================================================
+// FEE
+// One fee record per student. Represents the total amount
+// owed for the student's programme. outstanding is kept in
+// sync on every Payment insert. is_overdue is set true when
+// due_date has passed and outstanding > 0.
+// ============================================================
+
+model Fee {
+  id          String   @id @default(uuid())
+  studentId   String   @unique @map("student_id")
+  totalAmount Decimal  @map("total_amount")  @db.Decimal(10, 2)
+  amountPaid  Decimal  @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  outstanding Decimal  @db.Decimal(10, 2)    // totalAmount - amountPaid
+  dueDate     DateTime @map("due_date")      @db.Date
+  isOverdue   Boolean  @default(false) @map("is_overdue")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+
+  @@map("fees")
+}
+
+// ============================================================
+// PAYMENT
+// Individual payment transaction recorded against a Fee.
+// Each row represents one payment event. The reference_number
+// is a unique identifier (e.g. bank transfer ref or receipt
+// number) provided by the Registry administrator.
+// ============================================================
+
+model Payment {
+  id              String   @id @default(uuid())
+  feeId           String   @map("fee_id")
+  amount          Decimal  @db.Decimal(10, 2)
+  paymentDate     DateTime @map("payment_date") @db.Date
+  referenceNumber String   @map("reference_number")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  fee Fee @relation(fields: [feeId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ============================================================
+// MODULE
+// A unit of study within a Programme. Assessments are created
+// at the module level, allowing staff to attach deadlines and
+// grading to specific subject areas rather than just a
+// programme as a whole.
+// ============================================================
+
+model Module {
+  id          String   @id @default(uuid())
+  programmeId String   @map("programme_id")
+  title       String
+  code        String   @unique               // e.g. CS101
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  programme   Programme    @relation(fields: [programmeId], references: [id])
+  assessments Assessment[]
+
+  @@map("modules")
+}
+
+// ============================================================
+// ASSESSMENT
+// Created by a staff member against a Module. Defines the
+// task students must submit work for, with a deadline that
+// determines whether a submission is on time or late.
+// ============================================================
+
+model Assessment {
+  id          String   @id @default(uuid())
+  moduleId    String   @map("module_id")
+  createdById String   @map("created_by")
+  title       String
+  deadline    DateTime
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  module      Module       @relation(fields: [moduleId], references: [id])
+  createdBy   User         @relation("CreatedByUser", fields: [createdById], references: [id])
+  submissions Submission[]
+  results     Result[]
+
+  @@map("assessments")
+}
+
+// ============================================================
+// SUBMISSION
+// A student's file upload for an Assessment. One row per
+// student per assessment (enforced by the unique constraint).
+// Re-submissions before the deadline overwrite the existing
+// row (updated_at tracks this). is_late is set at the moment
+// of upload by comparing submitted_at to assessment.deadline,
+// and is never recalculated afterwards so deadline changes
+// do not retroactively affect existing submissions.
+// ============================================================
+
+model Submission {
+  id           String   @id @default(uuid())
+  assessmentId String   @map("assessment_id")
+  studentId    String   @map("student_id")
+  fileUrl      String   @map("file_url")
+  fileType     FileType @map("file_type")
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+  isLate       Boolean  @default(false) @map("is_late")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  result     Result?
+
+  // One submission per student per assessment
+  @@unique([assessmentId, studentId])
+  @@map("submissions")
+}
+
+// ============================================================
+// RESULT
+// Grade entered by staff for a student's submission.
+// classification is derived from grade at write time:
+//   < 40  → FAIL
+//   40–59 → PASS
+//   60–69 → MERIT
+//   ≥ 70  → DISTINCTION
+// is_published controls student visibility — a student cannot
+// see their result until a staff member explicitly publishes
+// it. student_id and assessment_id are stored directly
+// (alongside submission_id) so marksheet queries do not
+// always require a join through Submission.
+// ============================================================
+
+model Result {
+  id           String         @id @default(uuid())
+  submissionId String         @unique @map("submission_id")
+  studentId    String         @map("student_id")
+  assessmentId String         @map("assessment_id")
+  grade        Int            // 0–100
+  classification Classification
+  isPublished  Boolean        @default(false) @map("is_published")
+  gradedAt     DateTime       @default(now()) @map("graded_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id])
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+
+  @@map("results")
+}
