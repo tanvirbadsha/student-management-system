@@ -4,6 +4,13 @@ export { Classification, EnrolmentStatus, FileType, Role } from "@prisma/client"
 
 export type RoleToggleState = "STAFF" | "STUDENT"
 
+export type UserListItem = {
+  id: string
+  fullName: string
+  email: string
+  role: RoleToggleState
+}
+
 export type ApiResponse<T> =
   | { data: T; error: null }
   | { data: null; error: string }

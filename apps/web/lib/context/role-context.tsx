@@ -16,9 +16,9 @@ const USER_ID_STORAGE_KEY = "sms-user-id"
 const STORAGE_CHANGE_EVENT = "sms-role-context-change"
 
 type RoleContextValue = {
-  role: RoleToggleState
+  role: RoleToggleState | null
   userId: string | null
-  setRole: (role: RoleToggleState) => void
+  setRole: (role: RoleToggleState | null) => void
   setUserId: (userId: string | null) => void
   isStaff: boolean
   isStudent: boolean
@@ -36,10 +36,10 @@ function subscribeToStorage(onStoreChange: () => void) {
   }
 }
 
-function getRoleSnapshot(): RoleToggleState {
+function getRoleSnapshot(): RoleToggleState | null {
   const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY)
 
-  return storedRole === "STUDENT" ? "STUDENT" : "STAFF"
+  return storedRole === "STAFF" || storedRole === "STUDENT" ? storedRole : null
 }
 
 function getUserIdSnapshot(): string | null {
@@ -47,10 +47,10 @@ function getUserIdSnapshot(): string | null {
 }
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const role = useSyncExternalStore<RoleToggleState>(
+  const role = useSyncExternalStore<RoleToggleState | null>(
     subscribeToStorage,
     getRoleSnapshot,
-    () => "STAFF"
+    () => null
   )
   const userId = useSyncExternalStore<string | null>(
     subscribeToStorage,
@@ -58,8 +58,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     () => null
   )
 
-  const setRole = useCallback((nextRole: RoleToggleState) => {
-    window.localStorage.setItem(ROLE_STORAGE_KEY, nextRole)
+  const setRole = useCallback((nextRole: RoleToggleState | null) => {
+    if (nextRole === null) {
+      window.localStorage.removeItem(ROLE_STORAGE_KEY)
+    } else {
+      window.localStorage.setItem(ROLE_STORAGE_KEY, nextRole)
+    }
+
     window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT))
   }, [])
 
