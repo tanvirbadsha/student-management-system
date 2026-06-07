@@ -1,0 +1,48 @@
+@import "@workspace/ui/globals.css";
+
+:root {
+  --background: #F7F6F3;
+  --surface: #FFFFFF;
+  --surface-elevated: #F0EEE9;
+  --border: #E2DED8;
+  --text-primary: #1A1714;
+  --text-secondary: #6B6560;
+  --text-muted: #9E9891;
+  --accent: #1D4ED8;
+  --accent-hover: #1E40AF;
+  --accent-foreground: #FFFFFF;
+  --success: #15803D;
+  --success-bg: #F0FDF4;
+  --warning: #B45309;
+  --warning-bg: #FFFBEB;
+  --danger: #B91C1C;
+  --danger-bg: #FEF2F2;
+  --info: #0369A1;
+  --info-bg: #F0F9FF;
+  --badge-enrolled: #15803D;
+  --badge-deferred: #B45309;
+  --badge-withdrawn: #B91C1C;
+  --badge-completed: #0369A1;
+  --grade-distinction: #15803D;
+  --grade-merit: #B45309;
+  --grade-pass: #0369A1;
+  --grade-fail: #B91C1C;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #12100E;
+    --surface: #1E1B18;
+    --surface-elevated: #2A2622;
+    --text-primary: #F7F6F3;
+    --text-secondary: #C9C1B8;
+  }
+}
+
+body {
+  font-family: var(--font-sans), Arial, sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}

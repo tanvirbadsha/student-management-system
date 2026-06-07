@@ -43,6 +43,8 @@ import {
 import { toast } from "sonner"
 
 import { StatusBadge } from "@/components/students/status-badge"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import type {
@@ -364,24 +366,20 @@ function StudentsView({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Student Enrolment
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Registry of all enrolled students
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <HugeiconsIcon
-            icon={UserAdd01Icon}
-            strokeWidth={2}
-            data-icon="inline-start"
-          />
-          Enrol New Student
-        </Button>
-      </div>
+      <PageHeader
+        title="Student Enrolment"
+        subtitle="Registry of all enrolled students"
+        action={
+          <Button onClick={() => setDialogOpen(true)}>
+            <HugeiconsIcon
+              icon={UserAdd01Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Enrol New Student
+          </Button>
+        }
+      />
 
       <Card>
         <CardContent className="grid gap-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_180px]">
@@ -439,7 +437,7 @@ function StudentsView({
       {loadError !== null ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-destructive">{loadError}</p>
+            <p className="text-sm text-danger">{loadError}</p>
             <Button
               className="mt-4"
               variant="outline"
@@ -455,28 +453,24 @@ function StudentsView({
       ) : isLoading ? (
         <StudentTableSkeleton />
       ) : students.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center py-16 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <HugeiconsIcon
-                icon={UserGroupIcon}
-                strokeWidth={1.8}
-                className="size-6 text-muted-foreground"
-              />
-            </span>
-            <h2 className="mt-4 font-heading text-lg font-medium">
-              No students found
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try changing or clearing the current filters.
-            </p>
-            {hasFilters && (
+        <EmptyState
+          icon={
+            <HugeiconsIcon
+              icon={UserGroupIcon}
+              strokeWidth={1.8}
+              className="size-5"
+            />
+          }
+          title="No students found"
+          description="Try changing or clearing the current filters."
+          action={
+            hasFilters ? (
               <Button className="mt-4" variant="outline" onClick={clearFilters}>
                 Clear filters
               </Button>
-            )}
-          </CardContent>
-        </Card>
+            ) : undefined
+          }
+        />
       ) : (
         <>
           <Card className="py-0">
@@ -503,12 +497,16 @@ function StudentsView({
                     <TableCell>
                       <div>
                         <p className="font-medium">{student.user.fullName}</p>
-                        <p className="text-muted-foreground">
+                        <p className="text-text-secondary">
                           {student.user.email}
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>{student.programme.code}</TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm">
+                        {student.programme.code}
+                      </span>
+                    </TableCell>
                     <TableCell>{student.academicYear}</TableCell>
                     <TableCell>
                       <StatusBadge status={student.status} />
@@ -520,7 +518,7 @@ function StudentsView({
                     </TableCell>
                     <TableCell>
                       {student.fee?.isOverdue ? (
-                        <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">
+                        <Badge className="bg-danger-bg text-danger">
                           Overdue
                         </Badge>
                       ) : null}
@@ -540,7 +538,7 @@ function StudentsView({
           </Card>
 
           <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-text-secondary">
               {pagination.total} student
               {pagination.total === 1 ? "" : "s"} total
             </p>
@@ -708,9 +706,7 @@ function StudentsView({
             </div>
 
             {fieldErrors.body !== undefined && (
-              <p className="mt-4 text-sm text-destructive">
-                {fieldErrors.body}
-              </p>
+              <p className="mt-4 text-sm text-danger">{fieldErrors.body}</p>
             )}
 
             <DialogFooter className="mt-6">
@@ -748,9 +744,7 @@ function FormField({
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error !== undefined && (
-        <p className="text-xs text-destructive">{error}</p>
-      )}
+      {error !== undefined && <p className="text-xs text-danger">{error}</p>}
     </div>
   )
 }

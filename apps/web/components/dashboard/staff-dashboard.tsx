@@ -31,6 +31,8 @@ import {
 import type { StaffDashboardData } from "@/lib/types"
 import { fetchApi } from "@/lib/api-client"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatCard } from "@/components/ui/stat-card"
 
 export function StaffDashboard() {
   const [data, setData] = useState<StaffDashboardData | null>(null)
@@ -84,7 +86,7 @@ export function StaffDashboard() {
     return (
       <Card>
         <CardContent className="py-16 text-center">
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-danger">
             {error ?? "Could not load dashboard"}
           </p>
           <Button
@@ -104,41 +106,38 @@ export function StaffDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Staff Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Registry operations overview
-        </p>
-      </div>
+      <PageHeader
+        title="Staff Dashboard"
+        subtitle="Registry operations overview"
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="Total Students"
+        <StatCard
+          label="Total Students"
           value={String(data.studentCounts.total)}
-          detail={`${data.studentCounts.enrolled} enrolled / ${data.studentCounts.deferred} deferred / ${data.studentCounts.completed} completed / ${data.studentCounts.withdrawn} withdrawn`}
+          subtext={`${data.studentCounts.enrolled} enrolled / ${data.studentCounts.deferred} deferred / ${data.studentCounts.completed} completed / ${data.studentCounts.withdrawn} withdrawn`}
         />
-        <MetricCard
-          title="Overdue Fees"
+        <StatCard
+          label="Overdue Fees"
           value={String(data.overdueFees.count)}
-          detail={`${formatCurrency(data.overdueFees.totalOutstanding)} outstanding`}
-          detailClassName="text-red-700 dark:text-red-300"
+          subtext={`${formatCurrency(data.overdueFees.totalOutstanding)} outstanding`}
+          variant={data.overdueFees.count > 0 ? "danger" : "default"}
         />
-        <MetricCard
-          title="Open Assessments"
+        <StatCard
+          label="Open Assessments"
           value={String(data.openAssessments.count)}
-          detail={`${data.openAssessments.totalSubmissions} submissions received`}
+          subtext={`${data.openAssessments.totalSubmissions} submissions received`}
         />
-        <MetricCard
-          title="Pending Grades"
+        <StatCard
+          label="Pending Grades"
           value={String(data.pendingGrades)}
-          detail="Submissions awaiting a result"
+          subtext="Submissions awaiting a result"
+          variant={data.pendingGrades > 0 ? "warning" : "default"}
         />
       </div>
 
       {data.overdueFees.count > 0 && (
-        <Alert className="border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+        <Alert className="border-warning bg-warning-bg text-text-primary">
           <AlertTitle>Overdue fee balances</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-1">
             <span>
@@ -182,7 +181,9 @@ export function StaffDashboard() {
                     </div>
                     <div className="shrink-0 text-right">
                       <Badge variant="secondary">
-                        {student.programme.code}
+                        <span className="font-mono text-sm">
+                          {student.programme.code}
+                        </span>
                       </Badge>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {formatDate(student.enrolledAt)}
@@ -227,7 +228,7 @@ export function StaffDashboard() {
                       <p className="truncate text-sm font-medium">
                         {student.user.fullName}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="truncate font-mono text-sm text-text-secondary">
                         {payment.referenceNumber}
                       </p>
                     </div>
@@ -284,15 +285,17 @@ export function StaffDashboard() {
                       {assessment.title}
                     </TableCell>
                     <TableCell>
-                      <p>{assessment.module.code}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="font-mono text-sm">
+                        {assessment.module.code}
+                      </p>
+                      <p className="text-xs text-text-secondary">
                         {assessment.module.title}
                       </p>
                     </TableCell>
                     <TableCell>
                       <p>{formatDateTime(assessment.deadline)}</p>
                       {days <= 7 && (
-                        <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                        <p className="mt-1 text-xs font-medium text-warning">
                           Closing in {days} day{days === 1 ? "" : "s"}
                         </p>
                       )}
@@ -313,36 +316,6 @@ export function StaffDashboard() {
         </Card>
       )}
     </div>
-  )
-}
-
-function MetricCard({
-  title,
-  value,
-  detail,
-  detailClassName,
-}: {
-  title: string
-  value: string
-  detail: string
-  detailClassName?: string
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-semibold">{value}</p>
-        <p
-          className={`mt-1 text-xs text-muted-foreground ${detailClassName ?? ""}`}
-        >
-          {detail}
-        </p>
-      </CardContent>
-    </Card>
   )
 }
 

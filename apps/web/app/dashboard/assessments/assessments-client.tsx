@@ -35,6 +35,8 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import { toast } from "sonner"
 
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import type { AssessmentWithRelations } from "@/lib/types"
@@ -253,24 +255,20 @@ export function AssessmentsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Assessments
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create assessments and monitor submissions
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <HugeiconsIcon
-            icon={Add01Icon}
-            strokeWidth={2}
-            data-icon="inline-start"
-          />
-          Create Assessment
-        </Button>
-      </div>
+      <PageHeader
+        title="Assessments"
+        subtitle="Create assessments and monitor submissions"
+        action={
+          <Button onClick={() => setDialogOpen(true)}>
+            <HugeiconsIcon
+              icon={Add01Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Create Assessment
+          </Button>
+        }
+      />
 
       <Tabs value={status} onValueChange={changeStatus}>
         <TabsList>
@@ -283,7 +281,7 @@ export function AssessmentsClient() {
       {loadError !== null ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-destructive">{loadError}</p>
+            <p className="text-sm text-danger">{loadError}</p>
             <Button
               className="mt-4"
               variant="outline"
@@ -299,13 +297,17 @@ export function AssessmentsClient() {
       ) : isLoading ? (
         <AssessmentGridLoading />
       ) : assessments.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <h2 className="font-heading text-lg font-medium">
-              No assessments yet. Create the first one.
-            </h2>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={
+            <HugeiconsIcon
+              icon={Calendar01Icon}
+              strokeWidth={1.8}
+              className="size-5"
+            />
+          }
+          title="No assessments yet"
+          description="Create the first assessment to start collecting submissions."
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {assessments.map((assessment) => (
@@ -420,7 +422,9 @@ function AssessmentCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-base">{assessment.title}</CardTitle>
-          <Badge variant="secondary">{assessment.module.code}</Badge>
+          <Badge variant="secondary">
+            <span className="font-mono text-sm">{assessment.module.code}</span>
+          </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
           {assessment.module.title}
@@ -430,9 +434,9 @@ function AssessmentCard({
         <div
           className={cn(
             "flex items-center gap-2 text-sm",
-            isClosed && "text-red-700 dark:text-red-300",
-            isClosingSoon && "text-amber-700 dark:text-amber-300",
-            !isClosed && !isClosingSoon && "text-muted-foreground"
+            isClosed && "text-danger",
+            isClosingSoon && "text-warning",
+            !isClosed && !isClosingSoon && "text-text-secondary"
           )}
         >
           <HugeiconsIcon
@@ -448,7 +452,7 @@ function AssessmentCard({
                 : formatDateTime(assessment.deadline)}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-text-secondary">
           {assessment._count.submissions} submission
           {assessment._count.submissions === 1 ? "" : "s"}
         </p>
@@ -475,9 +479,7 @@ function FormField({
     <div className="grid gap-1.5">
       <Label>{label}</Label>
       {children}
-      {error !== undefined && (
-        <p className="text-xs text-destructive">{error}</p>
-      )}
+      {error !== undefined && <p className="text-xs text-danger">{error}</p>}
     </div>
   )
 }

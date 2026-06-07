@@ -30,6 +30,8 @@ import { Label } from "@workspace/ui/components/label"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
 
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import type {
@@ -230,7 +232,7 @@ export default function MySubmissionsPage() {
     return (
       <Card>
         <CardContent className="py-16 text-center">
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-danger">
             {loadError ?? "Student profile not found"}
           </p>
           <Button
@@ -254,28 +256,23 @@ export default function MySubmissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          My Submissions
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload coursework and review submission status
-        </p>
-      </div>
+      <PageHeader
+        title="My Submissions"
+        subtitle="Upload coursework and review submission status"
+      />
 
       {assessments.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center py-16 text-center">
+        <EmptyState
+          icon={
             <HugeiconsIcon
               icon={UserGroupIcon}
               strokeWidth={1.8}
-              className="size-8 text-muted-foreground"
+              className="size-5"
             />
-            <h2 className="mt-4 font-heading text-lg font-medium">
-              No assessments are available for your programme.
-            </h2>
-          </CardContent>
-        </Card>
+          }
+          title="No assessments available"
+          description="No assessments are available for your programme."
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {assessments.map((assessment) => {
@@ -292,23 +289,25 @@ export default function MySubmissionsPage() {
                     <CardTitle className="text-base">
                       {assessment.title}
                     </CardTitle>
-                    <Badge variant="secondary">{assessment.module.code}</Badge>
+                    <Badge variant="secondary">
+                      <span className="font-mono text-sm">
+                        {assessment.module.code}
+                      </span>
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-text-secondary">
                     {assessment.module.title}
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">
+                    <p className="text-xs font-medium text-text-secondary">
                       Deadline
                     </p>
                     <p
                       className={cn(
                         "mt-1 text-sm",
-                        isClosed
-                          ? "text-red-700 dark:text-red-300"
-                          : "text-muted-foreground"
+                        isClosed ? "text-danger" : "text-text-secondary"
                       )}
                     >
                       {isClosed ? "Closed — " : ""}
@@ -334,7 +333,7 @@ export default function MySubmissionsPage() {
                         >
                           {fileName(submission.fileUrl)}
                         </a>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-text-secondary">
                           {submission.fileType} ·{" "}
                           {formatDateTime(submission.submittedAt)}
                         </p>
@@ -426,7 +425,7 @@ export default function MySubmissionsPage() {
                 </div>
               )}
               {fileError !== null && (
-                <p className="text-xs text-destructive">{fileError}</p>
+                <p className="text-xs text-danger">{fileError}</p>
               )}
             </div>
 
@@ -463,8 +462,8 @@ function SubmissionStatus({
     <Badge
       className={cn(
         submission.isLate
-          ? "bg-red-500/10 text-red-700 dark:text-red-300"
-          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+          ? "bg-danger-bg text-danger"
+          : "bg-success-bg text-success"
       )}
     >
       Submitted — {submission.isLate ? "Late" : "On Time"}

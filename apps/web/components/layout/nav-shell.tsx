@@ -4,9 +4,9 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
+  ArrowLeftRightIcon,
   Cancel01Icon,
   Menu01Icon,
-  SchoolIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -90,31 +90,29 @@ export function NavShell() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-border bg-surface">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-6">
         <Link
           href="/dashboard"
-          className="flex shrink-0 items-center gap-2 font-semibold"
+          className="flex shrink-0 items-baseline gap-1.5"
         >
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <HugeiconsIcon
-              icon={SchoolIcon}
-              strokeWidth={2}
-              className="size-4"
-            />
+          <span className="font-mono text-base font-semibold tracking-normal text-text-primary">
+            SMS
           </span>
-          <span>SMS Registry</span>
+          <span className="font-heading text-base font-normal text-text-secondary">
+            Registry
+          </span>
         </Link>
 
-        <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+        <nav className="hidden h-full flex-1 items-center justify-center gap-5 lg:flex">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               aria-current={isActive(link.href) ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                isActive(link.href) && "bg-muted text-foreground"
+                "flex h-full items-center border-b-2 border-transparent px-0.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary",
+                isActive(link.href) && "border-accent text-text-primary"
               )}
             >
               {link.label}
@@ -127,8 +125,8 @@ export function NavShell() {
             <Badge
               className={cn(
                 role === "STAFF"
-                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-success text-accent-foreground"
               )}
             >
               {role === "STAFF" ? "Staff" : "Student"}
@@ -137,11 +135,16 @@ export function NavShell() {
           {userName === null && role !== null && userId !== null ? (
             <Skeleton className="h-5 w-24" />
           ) : (
-            <span className="max-w-40 truncate text-sm font-medium">
+            <span className="max-w-40 truncate text-sm font-medium text-text-primary">
               {userName}
             </span>
           )}
-          <Button variant="outline" onClick={switchRole}>
+          <Button
+            variant="ghost"
+            className="h-8 px-3 text-[13px]"
+            onClick={switchRole}
+          >
+            <HugeiconsIcon icon={ArrowLeftRightIcon} strokeWidth={2} />
             Switch Role
           </Button>
         </div>
@@ -151,8 +154,8 @@ export function NavShell() {
             <Badge
               className={cn(
                 role === "STAFF"
-                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-success text-accent-foreground"
               )}
             >
               {role === "STAFF" ? "Staff" : "Student"}
@@ -174,7 +177,7 @@ export function NavShell() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="border-t px-4 py-4 lg:hidden">
+        <div className="border-t border-border bg-surface px-6 py-4 lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1">
             {links.map((link) => (
               <Link
@@ -182,8 +185,8 @@ export function NavShell() {
                 href={link.href}
                 aria-current={isActive(link.href) ? "page" : undefined}
                 className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                  isActive(link.href) && "bg-muted text-foreground"
+                  "border-l-2 border-transparent px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary",
+                  isActive(link.href) && "border-accent text-text-primary"
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -192,14 +195,17 @@ export function NavShell() {
             ))}
             <div className="mt-3 flex items-center justify-between gap-3 border-t pt-4">
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Signed in as</p>
+                <p className="text-xs text-text-muted">Signed in as</p>
                 {userName === null && role !== null && userId !== null ? (
                   <Skeleton className="mt-1 h-5 w-28" />
                 ) : (
-                  <p className="truncate text-sm font-medium">{userName}</p>
+                  <p className="truncate text-sm font-medium text-text-primary">
+                    {userName}
+                  </p>
                 )}
               </div>
-              <Button variant="outline" onClick={switchRole}>
+              <Button variant="ghost" onClick={switchRole}>
+                <HugeiconsIcon icon={ArrowLeftRightIcon} strokeWidth={2} />
                 Switch Role
               </Button>
             </div>

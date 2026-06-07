@@ -245,7 +245,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-danger">
             {loadError ?? "Fee record not found"}
           </p>
           <Button
@@ -268,7 +268,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
       {fee.isOverdue && Math.round(fee.outstanding * 100) !== 0 && (
         <Alert
           variant="destructive"
-          className="border-red-300 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950/40"
+          className="border-danger bg-danger-bg px-4 py-3"
         >
           <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} />
           <AlertTitle>Overdue balance</AlertTitle>
@@ -280,10 +280,10 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
       )}
 
       {Math.round(fee.outstanding * 100) === 0 && (
-        <Alert className="border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <Alert className="border-success bg-success-bg px-4 py-3 text-success">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
           <AlertTitle>Fully Paid</AlertTitle>
-          <AlertDescription className="text-emerald-700 dark:text-emerald-300">
+          <AlertDescription className="text-success">
             This student has no outstanding fee balance.
           </AlertDescription>
         </Alert>
@@ -312,20 +312,18 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
             <SummaryValue
               label="Amount paid"
               value={formatCurrency(fee.amountPaid)}
-              className="text-emerald-700 dark:text-emerald-300"
+              className="text-success"
             />
             <SummaryValue
               label="Outstanding balance"
               value={formatCurrency(fee.outstanding)}
-              className={
-                fee.isOverdue ? "text-red-700 dark:text-red-300" : undefined
-              }
+              className={fee.isOverdue ? "text-danger" : undefined}
             />
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Payment progress</span>
+              <span className="text-text-secondary">Payment progress</span>
               <span className="font-medium">{fee.percentagePaid}%</span>
             </div>
             <Progress
@@ -336,7 +334,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
 
           <div className="flex flex-col justify-between gap-3 border-t pt-5 sm:flex-row sm:items-center">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">
+              <p className="text-xs font-medium text-text-secondary">
                 Payment due date
               </p>
               <p className="mt-1 text-sm font-medium">
@@ -370,7 +368,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
           <CardTitle>Payment history</CardTitle>
         </CardHeader>
         {fee.payments.length === 0 ? (
-          <CardContent className="border-t py-12 text-center text-sm text-muted-foreground">
+          <CardContent className="border-t py-12 text-center text-sm text-text-secondary">
             No payments recorded yet
           </CardContent>
         ) : (
@@ -437,7 +435,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
                 }}
               />
               {dueDateError !== null && (
-                <p className="text-xs text-destructive">{dueDateError}</p>
+                <p className="text-xs text-danger">{dueDateError}</p>
               )}
             </div>
             <DialogFooter className="mt-6">
@@ -505,17 +503,15 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
                     )
                   }
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-text-secondary">
                   Maximum: {formatCurrency(fee.outstanding)}
                 </p>
                 {exceedsOutstanding ? (
-                  <p className="text-xs text-destructive">
+                  <p className="text-xs text-danger">
                     Cannot exceed outstanding balance
                   </p>
                 ) : paymentErrors.amount !== undefined ? (
-                  <p className="text-xs text-destructive">
-                    {paymentErrors.amount}
-                  </p>
+                  <p className="text-xs text-danger">{paymentErrors.amount}</p>
                 ) : null}
               </div>
 
@@ -537,7 +533,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
                   }
                 />
                 {paymentErrors.paymentDate !== undefined && (
-                  <p className="text-xs text-destructive">
+                  <p className="text-xs text-danger">
                     {paymentErrors.paymentDate}
                   </p>
                 )}
@@ -559,7 +555,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
                   }
                 />
                 {paymentErrors.referenceNumber !== undefined && (
-                  <p className="text-xs text-destructive">
+                  <p className="text-xs text-danger">
                     {paymentErrors.referenceNumber}
                   </p>
                 )}
@@ -567,9 +563,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
             </div>
 
             {paymentErrors.body !== undefined && (
-              <p className="mt-4 text-sm text-destructive">
-                {paymentErrors.body}
-              </p>
+              <p className="mt-4 text-sm text-danger">{paymentErrors.body}</p>
             )}
 
             <DialogFooter className="mt-6">
@@ -606,8 +600,10 @@ function SummaryValue({
 }) {
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-xl font-semibold ${className ?? ""}`}>{value}</p>
+      <p className="text-xs font-medium text-text-secondary">{label}</p>
+      <p className={`mt-1 font-mono text-xl font-semibold ${className ?? ""}`}>
+        {value}
+      </p>
     </div>
   )
 }

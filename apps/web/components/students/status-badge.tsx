@@ -4,10 +4,10 @@ import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@/lib/utils"
 
 const statusStyles: Record<EnrolmentStatus, string> = {
-  ENROLLED: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  DEFERRED: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  WITHDRAWN: "bg-red-500/10 text-red-700 dark:text-red-300",
-  COMPLETED: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  ENROLLED: "bg-success-bg text-badge-enrolled",
+  DEFERRED: "bg-warning-bg text-badge-deferred",
+  WITHDRAWN: "bg-danger-bg text-badge-withdrawn",
+  COMPLETED: "bg-info-bg text-badge-completed",
 }
 
 const statusLabels: Record<EnrolmentStatus, string> = {

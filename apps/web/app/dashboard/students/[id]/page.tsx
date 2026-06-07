@@ -193,13 +193,13 @@ export default function StudentDetailPage() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center py-16 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <span className="flex size-12 items-center justify-center rounded-full bg-danger-bg text-danger">
             <HugeiconsIcon icon={LockIcon} strokeWidth={2} className="size-6" />
           </span>
           <h1 className="mt-4 font-heading text-xl font-semibold">
             403 — Access denied
           </h1>
-          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          <p className="mt-2 max-w-md text-sm text-text-secondary">
             Student accounts can only view their own registry record.
           </p>
           <Button className="mt-4" variant="outline" asChild>
@@ -233,7 +233,7 @@ export default function StudentDetailPage() {
               </h1>
               <StatusBadge status={student.status} />
             </div>
-            <p className="mt-1 font-mono text-sm text-muted-foreground">
+            <p className="mt-1 font-mono text-sm text-text-secondary">
               {student.studentId}
             </p>
           </div>
@@ -259,7 +259,7 @@ export default function StudentDetailPage() {
       </div>
 
       {student.status === "WITHDRAWN" && (
-        <Alert className="border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+        <Alert className="border-danger bg-danger-bg text-danger">
           <AlertTitle>Withdrawn</AlertTitle>
           <AlertDescription>
             This student has withdrawn from the programme.
@@ -392,7 +392,7 @@ export default function StudentDetailPage() {
               </div>
 
               {editError !== null && (
-                <p className="text-sm text-destructive">{editError}</p>
+                <p className="text-sm text-danger">{editError}</p>
               )}
             </div>
 
@@ -419,7 +419,7 @@ export default function StudentDetailPage() {
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium text-text-secondary">{label}</p>
       <p className="mt-1 text-sm font-medium">{value}</p>
     </div>
   )
@@ -428,7 +428,7 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 function PlaceholderCard({ children }: { children: React.ReactNode }) {
   return (
     <Card>
-      <CardContent className="py-16 text-center text-sm text-muted-foreground">
+      <CardContent className="py-16 text-center text-sm text-text-secondary">
         {children}
       </CardContent>
     </Card>

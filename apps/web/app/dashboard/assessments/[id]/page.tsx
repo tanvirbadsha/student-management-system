@@ -215,23 +215,27 @@ export default function AssessmentDetailPage() {
               <h1 className="font-heading text-2xl font-semibold tracking-tight">
                 {assessment.title}
               </h1>
-              <Badge variant="secondary">{assessment.module.code}</Badge>
+              <Badge variant="secondary">
+                <span className="font-mono text-sm">
+                  {assessment.module.code}
+                </span>
+              </Badge>
               <Badge
                 className={cn(
                   isClosed
-                    ? "bg-red-500/10 text-red-700 dark:text-red-300"
-                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    ? "bg-danger-bg text-danger"
+                    : "bg-success-bg text-success"
                 )}
               >
                 {isClosed ? "Closed" : "Open"}
               </Badge>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-text-secondary">
               {assessment.module.title} · Due{" "}
               {formatDateTime(assessment.deadline)} · Created by{" "}
               {assessment.createdBy.fullName}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-text-secondary">
               {assessment._count.submissions} submission
               {assessment._count.submissions === 1 ? "" : "s"}
             </p>
@@ -289,7 +293,7 @@ export default function AssessmentDetailPage() {
                 </div>
               </div>
               {editError !== null && (
-                <p className="mt-3 text-sm text-destructive">{editError}</p>
+                <p className="mt-3 text-sm text-danger">{editError}</p>
               )}
               <div className="mt-4 flex gap-2">
                 <Button type="submit" disabled={isSaving}>
@@ -310,9 +314,9 @@ export default function AssessmentDetailPage() {
       )}
 
       {warning !== null && (
-        <Alert className="border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        <Alert className="border-warning bg-warning-bg px-4 py-3 text-warning">
           <AlertTitle>Deadline warning</AlertTitle>
-          <AlertDescription className="text-amber-800 dark:text-amber-300">
+          <AlertDescription className="text-warning">
             {warning}
           </AlertDescription>
         </Alert>
@@ -323,7 +327,7 @@ export default function AssessmentDetailPage() {
           <CardTitle>Submissions</CardTitle>
         </CardHeader>
         {assessment.submissions.length === 0 ? (
-          <CardContent className="border-t py-12 text-center text-sm text-muted-foreground">
+          <CardContent className="border-t py-12 text-center text-sm text-text-secondary">
             No submissions received yet.
           </CardContent>
         ) : (
@@ -354,8 +358,8 @@ export default function AssessmentDetailPage() {
                     <Badge
                       className={cn(
                         submission.isLate
-                          ? "bg-red-500/10 text-red-700 dark:text-red-300"
-                          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          ? "bg-danger-bg text-danger"
+                          : "bg-success-bg text-success"
                       )}
                     >
                       {submission.isLate ? "Late" : "On Time"}
@@ -375,10 +379,12 @@ export default function AssessmentDetailPage() {
                   </TableCell>
                   <TableCell>
                     {submission.result === null ? (
-                      <span className="text-muted-foreground">Not graded</span>
+                      <span className="text-text-secondary">Not graded</span>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span>{submission.result.grade}%</span>
+                        <span className="font-mono text-sm">
+                          {submission.result.grade}%
+                        </span>
                         <ClassificationBadge
                           classification={submission.result.classification}
                         />
@@ -390,11 +396,11 @@ export default function AssessmentDetailPage() {
                       <HugeiconsIcon
                         icon={CheckmarkCircle02Icon}
                         strokeWidth={2}
-                        className="size-4 text-emerald-600"
+                        className="size-4 text-success"
                         aria-label="Published"
                       />
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-text-secondary">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -419,7 +425,7 @@ export default function AssessmentDetailPage() {
         </CardHeader>
         <CardContent>
           {notSubmitted.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-text-secondary">
               Every student in this programme has submitted.
             </p>
           ) : (
@@ -430,7 +436,7 @@ export default function AssessmentDetailPage() {
                   className="rounded-md border px-3 py-2 text-sm"
                 >
                   <p className="font-medium">{student.user.fullName}</p>
-                  <p className="font-mono text-xs text-muted-foreground">
+                  <p className="font-mono text-sm text-text-secondary">
                     {student.studentId}
                   </p>
                 </div>

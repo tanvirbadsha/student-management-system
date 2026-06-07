@@ -6,12 +6,7 @@ import { useRouter } from "next/navigation"
 import { CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Card, CardContent } from "@workspace/ui/components/card"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
@@ -24,6 +19,9 @@ import {
 
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatCard } from "@/components/ui/stat-card"
 import type {
   OverdueFeeRecord,
   PaginatedApiResponse,
@@ -121,19 +119,15 @@ export default function FeesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Fees &amp; Payments
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Monitor overdue balances and student payment status
-        </p>
-      </div>
+      <PageHeader
+        title="Fees & Payments"
+        subtitle="Monitor overdue balances and student payment status"
+      />
 
       {error !== null ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
             <Button
               className="mt-4"
               variant="outline"
@@ -146,42 +140,40 @@ export default function FeesPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard
-              title="Overdue students"
+            <StatCard
+              label="Overdue students"
               value={String(overdueFees.length)}
+              variant={overdueFees.length > 0 ? "danger" : "default"}
             />
-            <SummaryCard
-              title="Overdue outstanding"
+            <StatCard
+              label="Overdue outstanding"
               value={formatCurrency(summary.totalOutstanding)}
-              valueClassName="text-red-700 dark:text-red-300"
+              variant={summary.totalOutstanding > 0 ? "danger" : "default"}
             />
-            <SummaryCard
-              title="Students fully paid"
+            <StatCard
+              label="Students fully paid"
               value={String(summary.fullyPaid)}
-              valueClassName="text-emerald-700 dark:text-emerald-300"
+              variant="success"
             />
-            <SummaryCard
-              title="Partial payments"
+            <StatCard
+              label="Partial payments"
               value={String(summary.partialPayment)}
-              valueClassName="text-amber-700 dark:text-amber-300"
+              variant={summary.partialPayment > 0 ? "warning" : "default"}
             />
           </div>
 
           {overdueFees.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center py-16 text-center">
-                <span className="flex size-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                  <HugeiconsIcon
-                    icon={CheckmarkCircle02Icon}
-                    strokeWidth={2}
-                    className="size-6"
-                  />
-                </span>
-                <h2 className="mt-4 font-heading text-lg font-medium">
-                  No overdue fees — all students are up to date
-                </h2>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={
+                <HugeiconsIcon
+                  icon={CheckmarkCircle02Icon}
+                  strokeWidth={2}
+                  className="size-5"
+                />
+              }
+              title="No overdue fees"
+              description="All students are up to date."
+            />
           ) : (
             <Card className="py-0">
               <Table>
@@ -205,18 +197,22 @@ export default function FeesPage() {
                         {record.studentId}
                       </TableCell>
                       <TableCell>{record.fullName}</TableCell>
-                      <TableCell>{record.programme.code}</TableCell>
+                      <TableCell>
+                        <span className="font-mono text-sm">
+                          {record.programme.code}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         {formatCurrency(record.fee.totalAmount)}
                       </TableCell>
                       <TableCell>
                         {formatCurrency(record.fee.amountPaid)}
                       </TableCell>
-                      <TableCell className="font-medium text-red-700 dark:text-red-300">
+                      <TableCell className="font-medium text-danger">
                         {formatCurrency(record.fee.outstanding)}
                       </TableCell>
                       <TableCell>{formatDate(record.fee.dueDate)}</TableCell>
-                      <TableCell className="text-red-700 dark:text-red-300">
+                      <TableCell className="text-danger">
                         {daysOverdue(record.fee.dueDate)} days overdue
                       </TableCell>
                       <TableCell className="text-right">
@@ -235,31 +231,6 @@ export default function FeesPage() {
         </>
       )}
     </div>
-  )
-}
-
-function SummaryCard({
-  title,
-  value,
-  valueClassName,
-}: {
-  title: string
-  value: string
-  valueClassName?: string
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className={`text-2xl font-semibold ${valueClassName ?? ""}`}>
-          {value}
-        </p>
-      </CardContent>
-    </Card>
   )
 }
 

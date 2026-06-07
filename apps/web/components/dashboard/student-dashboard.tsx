@@ -22,6 +22,8 @@ import { Progress } from "@workspace/ui/components/progress"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { ClassificationBadge } from "@/components/results/classification-badge"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatCard } from "@/components/ui/stat-card"
 import { fetchApi } from "@/lib/api-client"
 import type {
   PaginatedApiResponse,
@@ -96,7 +98,7 @@ export function StudentDashboard({ userId }: { userId: string }) {
     return (
       <Card>
         <CardContent className="py-16 text-center">
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-danger">
             {error ?? "Could not load dashboard"}
           </p>
           <Button
@@ -116,12 +118,10 @@ export function StudentDashboard({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Welcome back, {data.student.user.fullName}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{todayLabel()}</p>
-      </div>
+      <PageHeader
+        title={`Welcome back, ${data.student.user.fullName}`}
+        subtitle={todayLabel()}
+      />
 
       <FeeStatusCard data={data} />
 
@@ -145,10 +145,13 @@ export function StudentDashboard({ userId }: { userId: string }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium">{assessment.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {assessment.module.code} / {assessment.module.title}
+                        <p className="mt-1 text-xs text-text-secondary">
+                          <span className="font-mono text-sm">
+                            {assessment.module.code}
+                          </span>{" "}
+                          / {assessment.module.title}
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-xs text-text-secondary">
                           Due {formatDateTime(assessment.deadline)}
                         </p>
                       </div>
@@ -189,12 +192,12 @@ export function StudentDashboard({ userId }: { userId: string }) {
                       <p className="truncate text-sm font-medium">
                         {result.assessment.title}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 font-mono text-sm text-text-secondary">
                         {result.assessment.module.code}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-2xl font-semibold">
+                      <span className="font-mono text-2xl font-semibold">
                         {result.grade}%
                       </span>
                       <ClassificationBadge
@@ -222,24 +225,24 @@ export function StudentDashboard({ userId }: { userId: string }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <QuickStat
+        <StatCard
           label="Total Submissions"
           value={String(data.submissionStats.total)}
-          detail={`On time: ${data.submissionStats.onTime} / Late: ${data.submissionStats.late}`}
+          subtext={`On time: ${data.submissionStats.onTime} / Late: ${data.submissionStats.late}`}
         />
-        <QuickStat
+        <StatCard
           label="Published Results"
           value={String(data.resultStats.published)}
-          detail="Visible on your marksheet"
+          subtext="Visible on your marksheet"
         />
-        <QuickStat
+        <StatCard
           label="Average Grade"
           value={
             data.resultStats.averageGrade === null
               ? "-"
               : `${data.resultStats.averageGrade}%`
           }
-          detail="Across published results"
+          subtext="Across published results"
         />
       </div>
     </div>
@@ -273,24 +276,21 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
       id="fee-status"
       className={cn(
         "border-2",
-        tone === "red" &&
-          "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30",
-        tone === "green" &&
-          "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30",
-        tone === "amber" &&
-          "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+        tone === "red" && "border-danger bg-danger-bg",
+        tone === "green" && "border-success bg-success-bg",
+        tone === "amber" && "border-warning bg-warning-bg"
       )}
     >
       <CardHeader className="flex flex-row items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-background/70">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface/70">
           <HugeiconsIcon
             icon={Icon}
             strokeWidth={2}
             className={cn(
               "size-5",
-              tone === "red" && "text-red-700 dark:text-red-300",
-              tone === "green" && "text-emerald-700 dark:text-emerald-300",
-              tone === "amber" && "text-amber-700 dark:text-amber-300"
+              tone === "red" && "text-danger",
+              tone === "green" && "text-success",
+              tone === "amber" && "text-warning"
             )}
           />
         </span>
@@ -323,14 +323,11 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
             <span>Payment progress</span>
             <span>{fee.percentagePaid}%</span>
           </div>
-          <Progress
-            value={fee.percentagePaid}
-            className="h-2 bg-background/70"
-          />
+          <Progress value={fee.percentagePaid} className="h-2 bg-surface/70" />
         </div>
       </CardContent>
       <CardFooter>
-        <Button variant="outline" className="bg-background/70" asChild>
+        <Button variant="outline" className="bg-surface/70" asChild>
           <Link href={`/dashboard/students/${data.student.id}?tab=fees`}>
             View fee details
             <HugeiconsIcon
@@ -348,8 +345,8 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
 function FeeValue({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold">{value}</p>
+      <p className="text-xs text-text-secondary">{label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold">{value}</p>
     </div>
   )
 }
@@ -368,35 +365,11 @@ function SubmissionStatus({
   return (
     <Badge
       className={cn(
-        isLate
-          ? "bg-red-500/10 text-red-700 dark:text-red-300"
-          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+        isLate ? "bg-danger-bg text-danger" : "bg-success-bg text-success"
       )}
     >
       {isLate ? "Submitted late" : "Submitted on time"}
     </Badge>
-  )
-}
-
-function QuickStat({
-  label,
-  value,
-  detail,
-}: {
-  label: string
-  value: string
-  detail: string
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-1">
-        <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-semibold">{value}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-      </CardContent>
-    </Card>
   )
 }
 

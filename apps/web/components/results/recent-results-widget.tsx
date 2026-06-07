@@ -85,7 +85,7 @@ export function RecentResultsWidget({ userId }: { userId: string }) {
             ))}
           </div>
         ) : results.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-text-secondary">
             No results published yet
           </p>
         ) : (
@@ -99,7 +99,9 @@ export function RecentResultsWidget({ userId }: { userId: string }) {
                   {result.assessment.title}
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-sm font-semibold">{result.grade}%</span>
+                  <span className="font-mono text-sm font-semibold">
+                    {result.grade}%
+                  </span>
                   <ClassificationBadge classification={result.classification} />
                 </div>
               </div>

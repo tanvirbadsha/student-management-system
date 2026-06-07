@@ -12,6 +12,8 @@ import {
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { ClassificationBadge } from "@/components/results/classification-badge"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import type {
@@ -135,27 +137,20 @@ export default function StudentResultsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          My Results
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Published assessment results
-        </p>
-      </div>
+      <PageHeader title="My Results" subtitle="Published assessment results" />
 
       {loadError !== null ? (
         <Card>
-          <CardContent className="py-16 text-center text-sm text-destructive">
+          <CardContent className="py-16 text-center text-sm text-danger">
             {loadError}
           </CardContent>
         </Card>
       ) : results.length === 0 && awaitingGrade.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            Your results have not been published yet. Check back later.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<span className="font-mono text-sm">%</span>}
+          title="No published results"
+          description="Your results have not been published yet. Check back later."
+        />
       ) : (
         <>
           {summary !== null && (
@@ -181,9 +176,11 @@ export default function StudentResultsPage() {
                       <CardTitle className="text-base">
                         {result.assessment.title}
                       </CardTitle>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {result.assessment.module.code} ·{" "}
-                        {result.assessment.module.title}
+                      <p className="mt-1 text-xs text-text-secondary">
+                        <span className="font-mono text-sm">
+                          {result.assessment.module.code}
+                        </span>{" "}
+                        · {result.assessment.module.title}
                       </p>
                     </div>
                     <ClassificationBadge
@@ -192,14 +189,16 @@ export default function StudentResultsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-4xl font-semibold">{result.grade}%</div>
+                  <div className="font-mono text-4xl font-semibold">
+                    {result.grade}%
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {result.submission.isLate && (
-                      <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">
+                      <Badge className="bg-danger-bg text-danger">
                         Submitted Late
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-text-secondary">
                       Submitted {formatDateTime(result.submission.submittedAt)}
                     </span>
                   </div>
@@ -212,14 +211,16 @@ export default function StudentResultsPage() {
                   <CardTitle className="text-base">
                     {submission.assessment.title}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {submission.assessment.module.code} /{" "}
-                    {submission.assessment.module.title}
+                  <p className="text-xs text-text-secondary">
+                    <span className="font-mono text-sm">
+                      {submission.assessment.module.code}
+                    </span>{" "}
+                    / {submission.assessment.module.title}
                   </p>
                 </CardHeader>
                 <CardContent>
                   <Badge variant="outline">Awaiting grade</Badge>
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <p className="mt-3 text-xs text-text-secondary">
                     Submitted {formatDateTime(submission.submittedAt)}
                   </p>
                 </CardContent>
@@ -235,8 +236,8 @@ export default function StudentResultsPage() {
 function SummaryValue({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
+      <p className="text-xs font-medium text-text-secondary">{label}</p>
+      <p className="mt-1 font-mono text-xl font-semibold">{value}</p>
     </div>
   )
 }

@@ -256,15 +256,15 @@ export function GradingPanel({
                   value={formatDateTime(submission.submittedAt)}
                 />
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">
+                  <p className="text-xs font-medium text-text-secondary">
                     Status
                   </p>
                   <Badge
                     className={cn(
                       "mt-1",
                       submission.isLate
-                        ? "bg-red-500/10 text-red-700 dark:text-red-300"
-                        : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        ? "bg-danger-bg text-danger"
+                        : "bg-success-bg text-success"
                     )}
                   >
                     {submission.isLate ? "Late" : "On Time"}
@@ -292,8 +292,8 @@ export function GradingPanel({
                 <Alert
                   className={cn(
                     result.isPublished
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
-                      : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                      ? "border-success bg-success-bg text-success"
+                      : "border-warning bg-warning-bg text-warning"
                   )}
                 >
                   <AlertTitle>
@@ -308,7 +308,7 @@ export function GradingPanel({
               )}
 
               {submission.isLate && (
-                <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                <Alert className="border-warning bg-warning-bg text-warning">
                   <AlertTitle>Late submission</AlertTitle>
                   <AlertDescription>
                     This is a late submission - submitted on{" "}
@@ -342,15 +342,13 @@ export function GradingPanel({
                     />
                   )}
                   {wholeNumberWarning !== null && (
-                    <p className="text-xs text-amber-700 dark:text-amber-300">
-                      {wholeNumberWarning}
-                    </p>
+                    <p className="text-xs text-warning">{wholeNumberWarning}</p>
                   )}
                 </div>
               </div>
 
               {error !== null && (
-                <Alert className="border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                <Alert className="border-danger bg-danger-bg text-danger">
                   <AlertTitle>Could not save result</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
@@ -411,8 +409,8 @@ function Detail({
 }) {
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={cn("mt-1", mono && "font-mono")}>{value}</p>
+      <p className="text-xs font-medium text-text-secondary">{label}</p>
+      <p className={cn("mt-1", mono && "font-mono text-sm")}>{value}</p>
     </div>
   )
 }

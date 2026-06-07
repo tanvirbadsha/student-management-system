@@ -77,7 +77,7 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
   if (error !== null || student?.fee === null || student === null) {
     return (
       <Card>
-        <CardContent className="py-10 text-center text-sm text-destructive">
+        <CardContent className="py-10 text-center text-sm text-danger">
           {error ?? "Fee record not found"}
         </CardContent>
       </Card>
@@ -98,12 +98,9 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
     <Card
       className={cn(
         "border-2",
-        tone === "red" &&
-          "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30",
-        tone === "green" &&
-          "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30",
-        tone === "amber" &&
-          "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+        tone === "red" && "border-danger bg-danger-bg",
+        tone === "green" && "border-success bg-success-bg",
+        tone === "amber" && "border-warning bg-warning-bg"
       )}
     >
       <CardContent className="flex flex-col justify-between gap-5 py-5 sm:flex-row sm:items-center">
@@ -113,9 +110,9 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
             strokeWidth={2}
             className={cn(
               "mt-0.5 size-5 shrink-0",
-              tone === "red" && "text-red-700 dark:text-red-300",
-              tone === "green" && "text-emerald-700 dark:text-emerald-300",
-              tone === "amber" && "text-amber-700 dark:text-amber-300"
+              tone === "red" && "text-danger",
+              tone === "green" && "text-success",
+              tone === "amber" && "text-warning"
             )}
           />
           <div>
@@ -129,7 +126,7 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
             </p>
           </div>
         </div>
-        <Button variant="outline" className="shrink-0 bg-background/70" asChild>
+        <Button variant="outline" className="shrink-0 bg-surface/70" asChild>
           <Link href={`/dashboard/students/${student.id}?tab=fees`}>
             View full fee details
             <HugeiconsIcon

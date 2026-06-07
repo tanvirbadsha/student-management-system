@@ -35,6 +35,8 @@ import {
   GradingPanel,
   type GradingSubmission,
 } from "@/components/results/grading-panel"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatCard } from "@/components/ui/stat-card"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import type {
@@ -249,14 +251,10 @@ export default function MarksheetPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Marksheet
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review grades and control student visibility
-        </p>
-      </div>
+      <PageHeader
+        title="Marksheet"
+        subtitle="Review grades and control student visibility"
+      />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Select
@@ -287,7 +285,10 @@ export default function MarksheetPage() {
           <SelectContent>
             {filteredAssessments.map((assessment) => (
               <SelectItem key={assessment.id} value={assessment.id}>
-                {assessment.module.code} — {assessment.title}
+                <span className="font-mono text-sm">
+                  {assessment.module.code}
+                </span>{" "}
+                — {assessment.title}
               </SelectItem>
             ))}
           </SelectContent>
@@ -296,7 +297,7 @@ export default function MarksheetPage() {
 
       {loadError !== null && (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-destructive">
+          <CardContent className="py-10 text-center text-sm text-danger">
             {loadError}
           </CardContent>
         </Card>
@@ -304,7 +305,7 @@ export default function MarksheetPage() {
 
       {assessmentId === "" ? (
         <Card>
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">
+          <CardContent className="py-16 text-center text-sm text-text-secondary">
             Select an assessment to view its marksheet
           </CardContent>
         </Card>
@@ -318,9 +319,11 @@ export default function MarksheetPage() {
             <CardHeader className="flex flex-row items-center justify-between gap-4 py-5">
               <div>
                 <CardTitle>{marksheet.assessment.title}</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {marksheet.assessment.module.code} ·{" "}
-                  {marksheet.assessment.module.title}
+                <p className="mt-1 text-xs text-text-secondary">
+                  <span className="font-mono text-sm">
+                    {marksheet.assessment.module.code}
+                  </span>{" "}
+                  · {marksheet.assessment.module.title}
                 </p>
               </div>
               <Button
@@ -336,11 +339,11 @@ export default function MarksheetPage() {
             </CardHeader>
 
             {marksheet.assessment.submissionCount === 0 ? (
-              <CardContent className="border-t py-16 text-center text-sm text-muted-foreground">
+              <CardContent className="border-t py-16 text-center text-sm text-text-secondary">
                 No submissions have been received for this assessment.
               </CardContent>
             ) : marksheet.results.length === 0 ? (
-              <CardContent className="border-t py-16 text-center text-sm text-muted-foreground">
+              <CardContent className="border-t py-16 text-center text-sm text-text-secondary">
                 No grades have been entered for this assessment yet.
               </CardContent>
             ) : (
@@ -369,12 +372,16 @@ export default function MarksheetPage() {
                       </TableCell>
                       <TableCell>
                         {result.submission.isLate && (
-                          <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">
+                          <Badge className="bg-danger-bg text-danger">
                             Late
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>{result.grade}%</TableCell>
+                      <TableCell>
+                        <span className="font-mono text-sm">
+                          {result.grade}%
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <ClassificationBadge
                           classification={result.classification}
@@ -471,30 +478,19 @@ function SummaryCards({ summary }: { summary: MarksheetSummary }) {
 function DistributionPills({ summary }: { summary: MarksheetSummary }) {
   return (
     <div className="flex w-full flex-wrap gap-1.5">
-      <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">
+      <Badge className="bg-danger-bg text-grade-fail">
         Fail {summary.distribution.FAIL}
       </Badge>
-      <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-300">
+      <Badge className="bg-info-bg text-grade-pass">
         Pass {summary.distribution.PASS}
       </Badge>
-      <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300">
+      <Badge className="bg-warning-bg text-grade-merit">
         Merit {summary.distribution.MERIT}
       </Badge>
-      <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+      <Badge className="bg-success-bg text-grade-distinction">
         Distinction {summary.distribution.DISTINCTION}
       </Badge>
     </div>
-  )
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
-      </CardHeader>
-      <CardContent className="text-2xl font-semibold">{value}</CardContent>
-    </Card>
   )
 }
 

@@ -43,14 +43,14 @@ const roleOptions = [
     title: "Staff",
     description: "Manage students, fees, assessments and grades",
     icon: TeacherIcon,
-    accent: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    accent: "bg-info-bg text-info",
   },
   {
     role: "STUDENT",
     title: "Student",
     description: "View your submissions, results and fee balance",
     icon: StudentIcon,
-    accent: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    accent: "bg-success-bg text-success",
   },
 ] satisfies Array<{
   role: RoleToggleState
@@ -135,16 +135,16 @@ export default function RoleSelectorPage() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/30 px-4 py-12 sm:px-6">
+    <main className="flex min-h-svh items-center justify-center bg-background px-6 py-12">
       <div className="w-full max-w-4xl">
         <div className="mx-auto mb-8 max-w-xl text-center">
-          <p className="mb-2 text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+          <p className="mb-2 text-xs font-medium tracking-[0.2em] text-text-muted uppercase">
             SMS Registry
           </p>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="font-heading text-3xl font-semibold text-text-primary sm:text-4xl">
             Choose how to continue
           </h1>
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-3 text-sm text-text-secondary">
             Select your role, then choose the account you want to use.
           </p>
         </div>
@@ -154,27 +154,27 @@ export default function RoleSelectorPage() {
             <button
               key={option.role}
               type="button"
-              className="group rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="group rounded-lg text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               onClick={() => openSelector(option.role)}
             >
-              <Card className="h-full min-h-52 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lg group-focus-visible:ring-0">
-                <CardHeader className="h-full content-between gap-8 p-6">
+              <Card className="h-full min-h-56 rounded-lg border-border bg-surface p-10 shadow-sm transition-all duration-150 ease-in-out group-hover:scale-[1.01] group-hover:border-accent">
+                <CardHeader className="h-full content-between gap-8 p-0">
                   <div
-                    className={`flex size-12 items-center justify-center rounded-xl ${option.accent}`}
+                    className={`flex size-14 items-center justify-center rounded-md ${option.accent}`}
                   >
                     <HugeiconsIcon
                       icon={option.icon}
                       strokeWidth={1.8}
-                      className="size-6"
+                      className="size-8"
                     />
                   </div>
                   <div>
                     <CardTitle className="text-xl">{option.title}</CardTitle>
-                    <CardDescription className="mt-2 max-w-sm text-sm">
+                    <CardDescription className="mt-2 max-w-sm text-sm text-text-secondary">
                       {option.description}
                     </CardDescription>
                   </div>
-                  <span className="flex items-center gap-2 text-sm font-medium">
+                  <span className="flex items-center gap-2 text-sm font-medium text-accent">
                     Continue as {option.title}
                     <HugeiconsIcon
                       icon={ArrowRight01Icon}
@@ -190,7 +190,7 @@ export default function RoleSelectorPage() {
       </div>
 
       <Dialog open={selectedRole !== null} onOpenChange={handleDialogChange}>
-        <DialogContent>
+        <DialogContent className="max-w-[400px] rounded-lg bg-surface shadow-md">
           <DialogHeader>
             <DialogTitle>
               Select a {selectedRole === "STAFF" ? "staff" : "student"} account
@@ -203,7 +203,7 @@ export default function RoleSelectorPage() {
           <div className="min-h-20">
             {loadState === "loading" && (
               <div className="space-y-3" aria-label="Loading users">
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-text-secondary">
                   <HugeiconsIcon
                     icon={Loading03Icon}
                     strokeWidth={2}
@@ -216,8 +216,8 @@ export default function RoleSelectorPage() {
             )}
 
             {loadState === "error" && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                <p className="text-sm text-destructive">
+              <div className="rounded-lg border border-danger/30 bg-danger-bg p-3">
+                <p className="text-sm text-danger">
                   Could not load users. Please try again.
                 </p>
                 <Button
@@ -235,7 +235,7 @@ export default function RoleSelectorPage() {
             )}
 
             {loadState === "success" && users.length === 0 && (
-              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-text-secondary">
                 No users are available for this role.
               </p>
             )}
@@ -252,7 +252,7 @@ export default function RoleSelectorPage() {
                         <span className="truncate font-medium">
                           {user.fullName}
                         </span>
-                        <span className="truncate text-muted-foreground">
+                        <span className="truncate text-text-secondary">
                           {user.email}
                         </span>
                       </span>
