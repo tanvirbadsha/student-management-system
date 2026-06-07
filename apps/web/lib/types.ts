@@ -2,7 +2,6 @@ import type {
   Classification as PrismaClassification,
   EnrolmentStatus as PrismaEnrolmentStatus,
   FileType as PrismaFileType,
-  Prisma,
 } from "@prisma/client"
 
 export { Classification, EnrolmentStatus, FileType, Role } from "@prisma/client"
@@ -162,9 +161,12 @@ export type AssessmentWithRelations = {
 }
 
 export type SubmissionResult = {
+  id: string
   grade: number
   classification: PrismaClassification
   isPublished: boolean
+  gradedAt: string
+  updatedAt: string
 }
 
 export type SubmissionWithRelations = {
@@ -208,35 +210,66 @@ export type AssessmentMutationResponse =
     }
   | { data: null; error: string }
 
-export type ResultWithRelations = Prisma.ResultGetPayload<{
-  include: {
-    student: {
-      select: {
-        id: true
-        studentId: true
-        user: {
-          select: {
-            fullName: true
-          }
-        }
-      }
-    }
-    assessment: {
-      select: {
-        id: true
-        title: true
-        module: {
-          select: {
-            title: true
-          }
-        }
-      }
-    }
-    submission: {
-      select: {
-        id: true
-        isLate: true
-      }
+export type ResultWithRelations = {
+  id: string
+  submissionId: string
+  studentId: string
+  assessmentId: string
+  grade: number
+  classification: PrismaClassification
+  isPublished: boolean
+  gradedAt: string
+  updatedAt: string
+  student: {
+    id: string
+    studentId: string
+    user: {
+      fullName: string
     }
   }
-}>
+  assessment: {
+    id: string
+    title: string
+    deadline: string
+    module: {
+      title: string
+      code: string
+    }
+  }
+  submission: {
+    id: string
+    fileUrl: string
+    fileType: PrismaFileType
+    submittedAt: string
+    isLate: boolean
+  }
+}
+
+export type ResultMutationResponse =
+  | {
+      data: ResultWithRelations
+      error: null
+      warning?: string
+    }
+  | { data: null; error: string }
+
+export type MarksheetSummary = {
+  totalGraded: number
+  totalPublished: number
+  averageGrade: number
+  distribution: Record<PrismaClassification, number>
+}
+
+export type MarksheetData = {
+  assessment: {
+    id: string
+    title: string
+    deadline: string
+    module: {
+      title: string
+      code: string
+    }
+  }
+  results: ResultWithRelations[]
+  summary?: MarksheetSummary
+}

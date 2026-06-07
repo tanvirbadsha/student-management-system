@@ -6,6 +6,7 @@ import { Card, CardContent } from "@workspace/ui/components/card"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { StudentFeeWidget } from "@/components/fees/student-fee-widget"
+import { RecentResultsWidget } from "@/components/results/recent-results-widget"
 import { useRole } from "@/lib/context/role-context"
 
 export default function DashboardPage() {
@@ -52,7 +53,10 @@ export default function DashboardPage() {
       {userId === null ? (
         <Skeleton className="h-40 w-full" />
       ) : (
-        <StudentFeeWidget userId={userId} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <StudentFeeWidget userId={userId} />
+          <RecentResultsWidget userId={userId} />
+        </div>
       )}
     </div>
   )

@@ -69,9 +69,12 @@ export const submissionRelationsSelect = {
   },
   result: {
     select: {
+      id: true,
       grade: true,
       classification: true,
       isPublished: true,
+      gradedAt: true,
+      updatedAt: true,
     },
   },
 } satisfies Prisma.SubmissionSelect
@@ -120,6 +123,14 @@ export function serializeSubmission(
       ...submission.assessment,
       deadline: submission.assessment.deadline.toISOString(),
     },
+    result:
+      submission.result === null
+        ? null
+        : {
+            ...submission.result,
+            gradedAt: submission.result.gradedAt.toISOString(),
+            updatedAt: submission.result.updatedAt.toISOString(),
+          },
   }
 }
 

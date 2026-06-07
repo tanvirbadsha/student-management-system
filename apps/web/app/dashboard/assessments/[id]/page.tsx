@@ -36,13 +36,17 @@ import {
 } from "@workspace/ui/components/table"
 import { toast } from "sonner"
 
+import { ClassificationBadge } from "@/components/results/classification-badge"
+import { GradingPanel } from "@/components/results/grading-panel"
 import { useRole } from "@/lib/context/role-context"
 import type {
   ApiResponse,
   AssessmentDetail,
   AssessmentMutationResponse,
   PaginatedApiResponse,
+  ResultWithRelations,
   StudentWithRelations,
+  SubmissionWithRelations,
 } from "@/lib/types"
 import { cn, formatDateTime } from "@/lib/utils"
 
@@ -60,6 +64,8 @@ export default function AssessmentDetailPage() {
   const [editError, setEditError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [selectedSubmission, setSelectedSubmission] =
+    useState<SubmissionWithRelations | null>(null)
 
   useEffect(() => {
     if (isStudent) {
@@ -372,9 +378,9 @@ export default function AssessmentDetailPage() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span>{submission.result.grade}%</span>
-                        <Badge variant="outline">
-                          {titleCase(submission.result.classification)}
-                        </Badge>
+                        <ClassificationBadge
+                          classification={submission.result.classification}
+                        />
                       </div>
                     )}
                   </TableCell>
@@ -394,11 +400,9 @@ export default function AssessmentDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        toast.info("Grading panel is added in Prompt 7")
-                      }
+                      onClick={() => setSelectedSubmission(submission)}
                     >
-                      Grade
+                      {submission.result === null ? "Grade" : "Edit Grade"}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -434,8 +438,58 @@ export default function AssessmentDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {selectedSubmission !== null && (
+        <GradingPanel
+          submission={selectedSubmission}
+          onOpenChange={(open) => {
+            if (!open) setSelectedSubmission(null)
+          }}
+          onResultSaved={updateResult}
+        />
+      )}
     </div>
   )
+
+  function updateResult(result: ResultWithRelations) {
+    setAssessment((current) => {
+      if (current === null) return current
+
+      return {
+        ...current,
+        submissions: current.submissions.map((submission) =>
+          submission.id === result.submissionId
+            ? {
+                ...submission,
+                result: {
+                  id: result.id,
+                  grade: result.grade,
+                  classification: result.classification,
+                  isPublished: result.isPublished,
+                  gradedAt: result.gradedAt,
+                  updatedAt: result.updatedAt,
+                },
+              }
+            : submission
+        ),
+      }
+    })
+    setSelectedSubmission((current) =>
+      current === null || current.id !== result.submissionId
+        ? current
+        : {
+            ...current,
+            result: {
+              id: result.id,
+              grade: result.grade,
+              classification: result.classification,
+              isPublished: result.isPublished,
+              gradedAt: result.gradedAt,
+              updatedAt: result.updatedAt,
+            },
+          }
+    )
+  }
 }
 
 async function loadProgrammeStudents(
@@ -490,10 +544,6 @@ function fieldMessage(error: string | null): string {
   if (error === null) return "Could not update assessment"
   const separator = error.indexOf(":")
   return separator === -1 ? error : error.slice(separator + 1).trim()
-}
-
-function titleCase(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase()
 }
 
 function DetailSkeleton() {
