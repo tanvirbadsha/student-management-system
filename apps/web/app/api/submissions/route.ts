@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { EnrolmentStatus, Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import {
@@ -54,6 +54,7 @@ export async function POST(request: Request) {
 
   const assessmentId = stringField(formData.get("assessmentId"))
   const studentId = stringField(formData.get("studentId"))
+  const lateConfirmed = stringField(formData.get("lateConfirmed")) === "true"
   const fileValue = formData.get("file")
 
   if (assessmentId === "") {
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
       }),
       prisma.student.findUnique({
         where: { id: studentId },
-        select: { id: true, programmeId: true },
+        select: { id: true, programmeId: true, status: true },
       }),
       prisma.submission.findUnique({
         where: {
@@ -110,6 +111,15 @@ export async function POST(request: Request) {
       return notFoundError<SubmissionWithRelations>("Student not found")
     }
 
+    if (
+      student.status === EnrolmentStatus.WITHDRAWN ||
+      student.status === EnrolmentStatus.COMPLETED
+    ) {
+      return validationError<SubmissionWithRelations>(
+        "Your enrolment is not active. Contact Registry."
+      )
+    }
+
     if (student.programmeId !== assessment.module.programmeId) {
       return validationError<SubmissionWithRelations>(
         "Assessment is not part of the student's programme"
@@ -118,6 +128,12 @@ export async function POST(request: Request) {
 
     const submittedAt = new Date()
     const isLate = submittedAt > assessment.deadline
+
+    if (existing === null && isLate && !lateConfirmed) {
+      return validationError<SubmissionWithRelations>(
+        "Late submission confirmation is required"
+      )
+    }
 
     if (existing !== null && isLate) {
       return validationError<SubmissionWithRelations>(

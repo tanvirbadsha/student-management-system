@@ -23,8 +23,8 @@ import {
 } from "@workspace/ui/components/table"
 
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   OverdueFeeRecord,
   PaginatedApiResponse,
   StudentWithRelations,
@@ -59,15 +59,14 @@ export default function FeesPage() {
       setIsLoading(true)
 
       try {
-        const [overdueResponse, allStudents] = await Promise.all([
-          fetch("/api/fees/overdue", { signal: controller.signal }),
+        const [overduePayload, allStudents] = await Promise.all([
+          fetchApi<OverdueFeeRecord[]>("/api/fees/overdue", {
+            signal: controller.signal,
+          }),
           loadAllStudents(controller.signal),
         ])
-        const overduePayload = (await overdueResponse.json()) as ApiResponse<
-          OverdueFeeRecord[]
-        >
 
-        if (!overdueResponse.ok || overduePayload.error !== null) {
+        if (overduePayload.error !== null) {
           throw new Error(overduePayload.error ?? "Could not load overdue fees")
         }
 
@@ -284,14 +283,12 @@ function daysOverdue(dueDate: string): number {
 async function loadAllStudents(
   signal: AbortSignal
 ): Promise<StudentWithRelations[]> {
-  const firstResponse = await fetch("/api/students?limit=100&page=1", {
-    signal,
-  })
-  const firstPayload = (await firstResponse.json()) as PaginatedApiResponse<
-    StudentWithRelations[]
-  >
+  const firstPayload = await fetchApi<
+    StudentWithRelations[],
+    PaginatedApiResponse<StudentWithRelations[]>
+  >("/api/students?limit=100&page=1", { signal })
 
-  if (!firstResponse.ok || firstPayload.error !== null) {
+  if (firstPayload.error !== null) {
     throw new Error(firstPayload.error ?? "Could not load fee summary")
   }
 
@@ -303,15 +300,12 @@ async function loadAllStudents(
     Array.from(
       { length: firstPayload.pagination.totalPages - 1 },
       async (_, index) => {
-        const response = await fetch(
-          `/api/students?limit=100&page=${index + 2}`,
-          { signal }
-        )
-        const payload = (await response.json()) as PaginatedApiResponse<
-          StudentWithRelations[]
-        >
+        const payload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?limit=100&page=${index + 2}`, { signal })
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load fee summary")
         }
 

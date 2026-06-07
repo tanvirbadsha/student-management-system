@@ -9,6 +9,11 @@ import {
   LockIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -45,10 +50,11 @@ import { toast } from "sonner"
 import { StatusBadge } from "@/components/students/status-badge"
 import { StudentFees } from "@/components/fees/student-fees"
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   StudentDetail,
   StudentMutationResponse,
+  StudentWithRelations,
 } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 
@@ -77,17 +83,12 @@ export default function StudentDetailPage() {
 
     async function loadStudent() {
       try {
-        const response = await fetch(`/api/students/${id}`, {
+        const payload = await fetchApi<StudentDetail>(`/api/students/${id}`, {
           signal: controller.signal,
         })
-        const payload = (await response.json()) as ApiResponse<StudentDetail>
 
-        if (!response.ok || payload.error !== null) {
-          throw new Error(
-            response.status === 404
-              ? "Student not found"
-              : (payload.error ?? "Could not load student")
-          )
+        if (payload.error !== null) {
+          throw new Error(payload.error ?? "Could not load student")
         }
 
         setStudent(payload.data)
@@ -127,7 +128,10 @@ export default function StudentDetailPage() {
     setEditError(null)
 
     try {
-      const response = await fetch(`/api/students/${id}`, {
+      const payload = await fetchApi<
+        StudentWithRelations,
+        StudentMutationResponse
+      >(`/api/students/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -135,9 +139,8 @@ export default function StudentDetailPage() {
           academicYear: year,
         }),
       })
-      const payload = (await response.json()) as StudentMutationResponse
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         setEditError(
           payload.error?.includes(":")
             ? payload.error.slice(payload.error.indexOf(":") + 1).trim()
@@ -254,6 +257,15 @@ export default function StudentDetailPage() {
           )}
         </div>
       </div>
+
+      {student.status === "WITHDRAWN" && (
+        <Alert className="border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <AlertTitle>Withdrawn</AlertTitle>
+          <AlertDescription>
+            This student has withdrawn from the programme.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs
         defaultValue={searchParams.get("tab") === "fees" ? "fees" : "overview"}

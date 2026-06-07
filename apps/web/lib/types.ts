@@ -269,6 +269,7 @@ export type MarksheetData = {
       title: string
       code: string
     }
+    submissionCount: number
   }
   results: ResultWithRelations[]
   summary?: MarksheetSummary

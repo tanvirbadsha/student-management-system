@@ -44,8 +44,8 @@ import { toast } from "sonner"
 
 import { StatusBadge } from "@/components/students/status-badge"
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   PaginatedApiResponse,
   Pagination,
   StudentMutationResponse,
@@ -139,14 +139,14 @@ function StudentsView({
 
     async function loadStudents() {
       try {
-        const response = await fetch(`/api/students?${queryString}`, {
+        const payload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?${queryString}`, {
           signal: controller.signal,
         })
-        const payload = (await response.json()) as PaginatedApiResponse<
-          StudentWithRelations[]
-        >
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load students")
         }
 
@@ -179,14 +179,11 @@ function StudentsView({
 
     async function loadProgrammes() {
       try {
-        const response = await fetch("/api/programmes", {
+        const payload = await fetchApi<ProgrammeOption[]>("/api/programmes", {
           signal: controller.signal,
         })
-        const payload = (await response.json()) as ApiResponse<
-          ProgrammeOption[]
-        >
 
-        if (response.ok && payload.error === null) {
+        if (payload.error === null) {
           setProgrammes(payload.data)
         }
       } catch (error) {
@@ -309,7 +306,10 @@ function StudentsView({
     setFieldErrors({})
 
     try {
-      const response = await fetch("/api/students", {
+      const payload = await fetchApi<
+        StudentWithRelations,
+        StudentMutationResponse
+      >("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -320,17 +320,16 @@ function StudentsView({
           academicYear: Number(form.academicYear),
         }),
       })
-      const payload = (await response.json()) as StudentMutationResponse
 
-      if (!response.ok || payload.error !== null) {
-        if (response.status === 409) {
+      if (payload.error !== null) {
+        if (payload.error.includes("already exists")) {
           setFieldErrors({
             email: "A user with this email already exists",
           })
           return
         }
 
-        if (response.status === 400 && payload.error !== null) {
+        if (payload.error.includes(":")) {
           setFieldErrors(parseFieldErrors(payload.error))
           return
         }

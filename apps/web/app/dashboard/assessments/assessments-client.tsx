@@ -36,7 +36,8 @@ import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import { toast } from "sonner"
 
 import { useRole } from "@/lib/context/role-context"
-import type { ApiResponse, AssessmentWithRelations } from "@/lib/types"
+import { fetchApi } from "@/lib/api-client"
+import type { AssessmentWithRelations } from "@/lib/types"
 import { cn, formatDateTime } from "@/lib/utils"
 
 type ModuleOption = {
@@ -98,14 +99,14 @@ export function AssessmentsClient() {
 
     async function loadAssessments() {
       try {
-        const response = await fetch(`/api/assessments${queryString}`, {
-          signal: controller.signal,
-        })
-        const payload = (await response.json()) as ApiResponse<
-          AssessmentWithRelations[]
-        >
+        const payload = await fetchApi<AssessmentWithRelations[]>(
+          `/api/assessments${queryString}`,
+          {
+            signal: controller.signal,
+          }
+        )
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load assessments")
         }
 
@@ -130,27 +131,25 @@ export function AssessmentsClient() {
 
     async function loadModules() {
       try {
-        const programmesResponse = await fetch("/api/programmes", {
-          signal: controller.signal,
-        })
-        const programmesPayload =
-          (await programmesResponse.json()) as ApiResponse<ProgrammeOption[]>
+        const programmesPayload = await fetchApi<ProgrammeOption[]>(
+          "/api/programmes",
+          {
+            signal: controller.signal,
+          }
+        )
 
-        if (!programmesResponse.ok || programmesPayload.error !== null) {
+        if (programmesPayload.error !== null) {
           throw new Error("Could not load programmes")
         }
 
         const moduleGroups = await Promise.all(
           programmesPayload.data.map(async (programme) => {
-            const response = await fetch(
+            const payload = await fetchApi<ModuleOption[]>(
               `/api/modules?programmeId=${encodeURIComponent(programme.id)}`,
               { signal: controller.signal }
             )
-            const payload = (await response.json()) as ApiResponse<
-              ModuleOption[]
-            >
 
-            if (!response.ok || payload.error !== null) {
+            if (payload.error !== null) {
               throw new Error("Could not load modules")
             }
 
@@ -211,22 +210,23 @@ export function AssessmentsClient() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/assessments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId ?? "",
-        },
-        body: JSON.stringify({
-          title: form.title,
-          moduleId: form.moduleId,
-          deadline: deadline.toISOString(),
-        }),
-      })
-      const payload =
-        (await response.json()) as ApiResponse<AssessmentWithRelations>
+      const payload = await fetchApi<AssessmentWithRelations>(
+        "/api/assessments",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userId ?? "",
+          },
+          body: JSON.stringify({
+            title: form.title,
+            moduleId: form.moduleId,
+            deadline: deadline.toISOString(),
+          }),
+        }
+      )
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         if (payload.error?.includes("Deadline must be in the future")) {
           setErrors({ deadline: "Please choose a future deadline" })
           return

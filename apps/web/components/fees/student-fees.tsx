@@ -43,12 +43,12 @@ import {
 import { toast } from "sonner"
 
 import type {
-  ApiResponse,
   FeeDetailsData,
   FeeRecord,
   FeeWithPayments,
   PaymentMutationData,
 } from "@/lib/types"
+import { fetchApi } from "@/lib/api-client"
 import {
   formatCurrency,
   formatDate,
@@ -84,13 +84,20 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     Partial<Record<keyof PaymentForm | "body", string>>
   >({})
   const [isRecording, setIsRecording] = useState(false)
+  const enteredPaymentAmount = Number(paymentForm.amount)
+  const exceedsOutstanding =
+    fee !== null &&
+    paymentForm.amount.trim() !== "" &&
+    Number.isFinite(enteredPaymentAmount) &&
+    enteredPaymentAmount > fee.outstanding
 
   const fetchFee = useCallback(
     async (signal?: AbortSignal) => {
-      const response = await fetch(`/api/fees/${studentId}`, { signal })
-      const payload = (await response.json()) as ApiResponse<FeeDetailsData>
+      const payload = await fetchApi<FeeDetailsData>(`/api/fees/${studentId}`, {
+        signal,
+      })
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         throw new Error(payload.error ?? "Could not load fee details")
       }
 
@@ -138,14 +145,13 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     setDueDateError(null)
 
     try {
-      const response = await fetch(`/api/fees/${studentId}`, {
+      const payload = await fetchApi<FeeRecord>(`/api/fees/${studentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dueDate }),
       })
-      const payload = (await response.json()) as ApiResponse<FeeRecord>
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         setDueDateError(
           fieldMessage(payload.error, "Could not update due date")
         )
@@ -175,7 +181,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     if (!Number.isFinite(amount) || amount <= 0) {
       errors.amount = "Payment amount must be greater than 0"
     } else if (amount > fee.outstanding) {
-      errors.amount = "Payment amount exceeds outstanding balance"
+      errors.amount = "Cannot exceed outstanding balance"
     }
 
     if (paymentForm.paymentDate === "") {
@@ -197,7 +203,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     setPaymentErrors({})
 
     try {
-      const response = await fetch("/api/payments", {
+      const payload = await fetchApi<PaymentMutationData>("/api/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -207,15 +213,10 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
           referenceNumber: paymentForm.referenceNumber,
         }),
       })
-      const payload =
-        (await response.json()) as ApiResponse<PaymentMutationData>
 
-      if (!response.ok || payload.error !== null) {
-        if (
-          response.status === 400 &&
-          payload.error?.includes("exceeds outstanding")
-        ) {
-          setPaymentErrors({ amount: payload.error })
+      if (payload.error !== null) {
+        if (payload.error.includes("exceeds outstanding")) {
+          setPaymentErrors({ amount: "Cannot exceed outstanding balance" })
           return
         }
 
@@ -264,7 +265,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
 
   return (
     <div className="space-y-4">
-      {fee.isOverdue && (
+      {fee.isOverdue && Math.round(fee.outstanding * 100) !== 0 && (
         <Alert
           variant="destructive"
           className="border-red-300 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950/40"
@@ -278,7 +279,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
         </Alert>
       )}
 
-      {fee.outstanding === 0 && (
+      {Math.round(fee.outstanding * 100) === 0 && (
         <Alert className="border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
           <AlertTitle>Fully Paid</AlertTitle>
@@ -507,11 +508,15 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
                 <p className="text-xs text-muted-foreground">
                   Maximum: {formatCurrency(fee.outstanding)}
                 </p>
-                {paymentErrors.amount !== undefined && (
+                {exceedsOutstanding ? (
+                  <p className="text-xs text-destructive">
+                    Cannot exceed outstanding balance
+                  </p>
+                ) : paymentErrors.amount !== undefined ? (
                   <p className="text-xs text-destructive">
                     {paymentErrors.amount}
                   </p>
-                )}
+                ) : null}
               </div>
 
               <div className="grid gap-1.5">
@@ -576,7 +581,10 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isRecording}>
+              <Button
+                type="submit"
+                disabled={isRecording || exceedsOutstanding}
+              >
                 {isRecording ? "Recording..." : "Record Payment"}
               </Button>
             </DialogFooter>

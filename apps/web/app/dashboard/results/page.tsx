@@ -13,11 +13,12 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { ClassificationBadge } from "@/components/results/classification-badge"
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   PaginatedApiResponse,
   ResultWithRelations,
   StudentWithRelations,
+  SubmissionWithRelations,
 } from "@/lib/types"
 import { formatDateTime } from "@/lib/utils"
 
@@ -25,6 +26,9 @@ export default function StudentResultsPage() {
   const router = useRouter()
   const { role, userId, isStaff, isStudent } = useRole()
   const [results, setResults] = useState<ResultWithRelations[]>([])
+  const [awaitingGrade, setAwaitingGrade] = useState<SubmissionWithRelations[]>(
+    []
+  )
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -42,16 +46,14 @@ export default function StudentResultsPage() {
 
     async function loadResults() {
       try {
-        const studentResponse = await fetch(
-          `/api/students?userId=${encodeURIComponent(userId ?? "")}&limit=1`,
-          { signal: controller.signal }
-        )
-        const studentPayload =
-          (await studentResponse.json()) as PaginatedApiResponse<
-            StudentWithRelations[]
-          >
+        const studentPayload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?userId=${encodeURIComponent(userId ?? "")}&limit=1`, {
+          signal: controller.signal,
+        })
 
-        if (!studentResponse.ok || studentPayload.error !== null) {
+        if (studentPayload.error !== null) {
           throw new Error(studentPayload.error ?? "Could not load student")
         }
 
@@ -60,26 +62,43 @@ export default function StudentResultsPage() {
           throw new Error("Student profile not found")
         }
 
-        const resultsResponse = await fetch(
-          `/api/results/student/${encodeURIComponent(student.id)}`,
-          {
-            headers: {
-              "x-user-id": userId ?? "",
-              "x-user-role": "STUDENT",
-            },
-            signal: controller.signal,
-          }
-        )
-        const resultsPayload = (await resultsResponse.json()) as ApiResponse<
-          ResultWithRelations[]
-        >
+        const [resultsPayload, submissionsPayload] = await Promise.all([
+          fetchApi<ResultWithRelations[]>(
+            `/api/results/student/${encodeURIComponent(student.id)}`,
+            {
+              signal: controller.signal,
+            }
+          ),
+          fetchApi<SubmissionWithRelations[]>(
+            `/api/submissions?studentId=${encodeURIComponent(student.id)}`,
+            {
+              signal: controller.signal,
+            }
+          ),
+        ])
 
-        if (!resultsResponse.ok || resultsPayload.error !== null) {
+        if (resultsPayload.error !== null) {
           throw new Error(resultsPayload.error ?? "Could not load results")
         }
 
-        setResults(
-          resultsPayload.data.filter((result) => result.isPublished === true)
+        if (submissionsPayload.error !== null) {
+          throw new Error(
+            submissionsPayload.error ?? "Could not load submissions"
+          )
+        }
+
+        const published = resultsPayload.data.filter(
+          (result) => result.isPublished === true
+        )
+        const gradedSubmissionIds = new Set(
+          resultsPayload.data.map((result) => result.submissionId)
+        )
+
+        setResults(published)
+        setAwaitingGrade(
+          submissionsPayload.data.filter(
+            (submission) => !gradedSubmissionIds.has(submission.id)
+          )
         )
         setLoadError(null)
       } catch (error) {
@@ -131,7 +150,7 @@ export default function StudentResultsPage() {
             {loadError}
           </CardContent>
         </Card>
-      ) : results.length === 0 ? (
+      ) : results.length === 0 && awaitingGrade.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-sm text-muted-foreground">
             Your results have not been published yet. Check back later.
@@ -184,6 +203,25 @@ export default function StudentResultsPage() {
                       Submitted {formatDateTime(result.submission.submittedAt)}
                     </span>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+            {awaitingGrade.map((submission) => (
+              <Card key={submission.id}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {submission.assessment.title}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {submission.assessment.module.code} /{" "}
+                    {submission.assessment.module.title}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="outline">Awaiting grade</Badge>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Submitted {formatDateTime(submission.submittedAt)}
+                  </p>
                 </CardContent>
               </Card>
             ))}

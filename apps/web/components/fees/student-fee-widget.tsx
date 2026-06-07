@@ -14,6 +14,7 @@ import { Card, CardContent } from "@workspace/ui/components/card"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import type { PaginatedApiResponse, StudentWithRelations } from "@/lib/types"
+import { fetchApi } from "@/lib/api-client"
 import { cn, formatCurrency, formatDate } from "@/lib/utils"
 
 export function StudentFeeWidget({ userId }: { userId: string }) {
@@ -26,15 +27,14 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
 
     async function loadStudent() {
       try {
-        const response = await fetch(
-          `/api/students?userId=${encodeURIComponent(userId)}&limit=1`,
-          { signal: controller.signal }
-        )
-        const payload = (await response.json()) as PaginatedApiResponse<
-          StudentWithRelations[]
-        >
+        const payload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?userId=${encodeURIComponent(userId)}&limit=1`, {
+          signal: controller.signal,
+        })
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load fee status")
         }
 
@@ -85,9 +85,10 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
   }
 
   const fee = student.fee
-  const isFullyPaid = fee.outstanding === 0
-  const tone = fee.isOverdue ? "red" : isFullyPaid ? "green" : "amber"
-  const Icon = fee.isOverdue
+  const isFullyPaid = Math.round(fee.outstanding * 100) === 0
+  const isOverdue = fee.isOverdue && !isFullyPaid
+  const tone = isOverdue ? "red" : isFullyPaid ? "green" : "amber"
+  const Icon = isOverdue
     ? AlertCircleIcon
     : isFullyPaid
       ? CheckmarkCircle02Icon
@@ -120,7 +121,7 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
           <div>
             <h2 className="font-heading font-semibold">Fee status</h2>
             <p className="mt-1 text-sm">
-              {fee.isOverdue
+              {isOverdue
                 ? `Your fees are overdue. Outstanding: ${formatCurrency(fee.outstanding)}. Please contact the Registry immediately.`
                 : isFullyPaid
                   ? "Your fees are fully paid. Thank you."

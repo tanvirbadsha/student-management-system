@@ -22,8 +22,8 @@ import { Progress } from "@workspace/ui/components/progress"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { ClassificationBadge } from "@/components/results/classification-badge"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   PaginatedApiResponse,
   StudentDashboardData,
   StudentWithRelations,
@@ -41,16 +41,14 @@ export function StudentDashboard({ userId }: { userId: string }) {
 
     async function loadDashboard() {
       try {
-        const studentResponse = await fetch(
-          `/api/students?userId=${encodeURIComponent(userId)}&limit=1`,
-          { signal: controller.signal }
-        )
-        const studentPayload =
-          (await studentResponse.json()) as PaginatedApiResponse<
-            StudentWithRelations[]
-          >
+        const studentPayload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?userId=${encodeURIComponent(userId)}&limit=1`, {
+          signal: controller.signal,
+        })
 
-        if (!studentResponse.ok || studentPayload.error !== null) {
+        if (studentPayload.error !== null) {
           throw new Error(studentPayload.error ?? "Could not load student")
         }
 
@@ -59,14 +57,12 @@ export function StudentDashboard({ userId }: { userId: string }) {
           throw new Error("Student profile not found")
         }
 
-        const dashboardResponse = await fetch(
+        const dashboardPayload = await fetchApi<StudentDashboardData>(
           `/api/dashboard/student/${encodeURIComponent(student.id)}`,
           { signal: controller.signal }
         )
-        const dashboardPayload =
-          (await dashboardResponse.json()) as ApiResponse<StudentDashboardData>
 
-        if (!dashboardResponse.ok || dashboardPayload.error !== null) {
+        if (dashboardPayload.error !== null) {
           throw new Error(dashboardPayload.error ?? "Could not load dashboard")
         }
 
@@ -263,9 +259,10 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
     )
   }
 
-  const isFullyPaid = fee.outstanding === 0
-  const tone = fee.isOverdue ? "red" : isFullyPaid ? "green" : "amber"
-  const Icon = fee.isOverdue
+  const isFullyPaid = Math.round(fee.outstanding * 100) === 0
+  const isOverdue = fee.isOverdue && !isFullyPaid
+  const tone = isOverdue ? "red" : isFullyPaid ? "green" : "amber"
+  const Icon = isOverdue
     ? AlertCircleIcon
     : isFullyPaid
       ? CheckmarkCircle02Icon
@@ -300,7 +297,7 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
         <div>
           <CardTitle>Fee Status</CardTitle>
           <p className="mt-1 text-xs">
-            {fee.isOverdue
+            {isOverdue
               ? "Payment is overdue"
               : isFullyPaid
                 ? "Fully paid"

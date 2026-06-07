@@ -36,8 +36,8 @@ import {
   type GradingSubmission,
 } from "@/components/results/grading-panel"
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   AssessmentWithRelations,
   MarksheetData,
   MarksheetSummary,
@@ -55,7 +55,7 @@ type ProgrammeOption = {
 
 export default function MarksheetPage() {
   const router = useRouter()
-  const { role, userId, isStaff, isStudent } = useRole()
+  const { role, isStaff, isStudent } = useRole()
   const [programmes, setProgrammes] = useState<ProgrammeOption[]>([])
   const [assessments, setAssessments] = useState<AssessmentWithRelations[]>([])
   const [programmeId, setProgrammeId] = useState("all")
@@ -86,24 +86,22 @@ export default function MarksheetPage() {
 
     async function loadFilters() {
       try {
-        const [programmesResponse, assessmentsResponse] = await Promise.all([
-          fetch("/api/programmes", { signal: controller.signal }),
-          fetch("/api/assessments", { signal: controller.signal }),
+        const [programmesPayload, assessmentsPayload] = await Promise.all([
+          fetchApi<ProgrammeOption[]>("/api/programmes", {
+            signal: controller.signal,
+          }),
+          fetchApi<AssessmentWithRelations[]>("/api/assessments", {
+            signal: controller.signal,
+          }),
         ])
-        const programmesPayload =
-          (await programmesResponse.json()) as ApiResponse<ProgrammeOption[]>
-        const assessmentsPayload =
-          (await assessmentsResponse.json()) as ApiResponse<
-            AssessmentWithRelations[]
-          >
 
-        if (!programmesResponse.ok || programmesPayload.error !== null) {
+        if (programmesPayload.error !== null) {
           throw new Error(
             programmesPayload.error ?? "Could not load programmes"
           )
         }
 
-        if (!assessmentsResponse.ok || assessmentsPayload.error !== null) {
+        if (assessmentsPayload.error !== null) {
           throw new Error(
             assessmentsPayload.error ?? "Could not load assessments"
           )
@@ -136,16 +134,14 @@ export default function MarksheetPage() {
       setLoadError(null)
 
       try {
-        const response = await fetch(
+        const payload = await fetchApi<MarksheetData>(
           `/api/results/marksheet?assessmentId=${encodeURIComponent(assessmentId)}`,
           {
-            headers: requestHeaders(userId, role),
             signal: controller.signal,
           }
         )
-        const payload = (await response.json()) as ApiResponse<MarksheetData>
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load marksheet")
         }
 
@@ -162,7 +158,7 @@ export default function MarksheetPage() {
 
     void loadMarksheet()
     return () => controller.abort()
-  }, [assessmentId, isStaff, role, userId])
+  }, [assessmentId, isStaff])
 
   const filteredAssessments = useMemo(
     () =>
@@ -339,7 +335,11 @@ export default function MarksheetPage() {
               </Button>
             </CardHeader>
 
-            {marksheet.results.length === 0 ? (
+            {marksheet.assessment.submissionCount === 0 ? (
+              <CardContent className="border-t py-16 text-center text-sm text-muted-foreground">
+                No submissions have been received for this assessment.
+              </CardContent>
+            ) : marksheet.results.length === 0 ? (
               <CardContent className="border-t py-16 text-center text-sm text-muted-foreground">
                 No grades have been entered for this assessment yet.
               </CardContent>
@@ -430,14 +430,16 @@ export default function MarksheetPage() {
     resultId: string,
     body: { isPublished: boolean }
   ): Promise<ResultWithRelations> {
-    const response = await fetch(`/api/results/${resultId}`, {
-      method: "PATCH",
-      headers: requestHeaders(userId, role),
-      body: JSON.stringify(body),
-    })
-    const payload = (await response.json()) as ResultMutationResponse
+    const payload = await fetchApi<ResultWithRelations, ResultMutationResponse>(
+      `/api/results/${resultId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    )
 
-    if (!response.ok || payload.error !== null) {
+    if (payload.error !== null) {
       throw new Error(payload.error ?? "Could not update result")
     }
 
@@ -564,14 +566,6 @@ function resultToSubmission(result: ResultWithRelations): GradingSubmission {
     student: result.student,
     assessment: result.assessment,
     result: submissionResult,
-  }
-}
-
-function requestHeaders(userId: string | null, role: string | null) {
-  return {
-    "Content-Type": "application/json",
-    "x-user-id": userId ?? "",
-    "x-user-role": role ?? "",
   }
 }
 

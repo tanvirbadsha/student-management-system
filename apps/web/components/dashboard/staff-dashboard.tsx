@@ -28,7 +28,8 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 
-import type { ApiResponse, StaffDashboardData } from "@/lib/types"
+import type { StaffDashboardData } from "@/lib/types"
+import { fetchApi } from "@/lib/api-client"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 
 export function StaffDashboard() {
@@ -42,13 +43,14 @@ export function StaffDashboard() {
 
     async function loadDashboard() {
       try {
-        const response = await fetch("/api/dashboard/staff", {
-          signal: controller.signal,
-        })
-        const payload =
-          (await response.json()) as ApiResponse<StaffDashboardData>
+        const payload = await fetchApi<StaffDashboardData>(
+          "/api/dashboard/staff",
+          {
+            signal: controller.signal,
+          }
+        )
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load dashboard")
         }
 

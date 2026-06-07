@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Download01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -22,9 +22,8 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { toast } from "sonner"
 
-import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   ResultMutationResponse,
   ResultWithRelations,
   SubmissionResult,
@@ -61,16 +60,27 @@ export function GradingPanel({
   onOpenChange,
   onResultSaved,
 }: GradingPanelProps) {
-  const { userId, role } = useRole()
   const result = submission?.result ?? null
-  const [gradeInput, setGradeInput] = useState(
-    result === null ? "" : String(result.grade)
-  )
+  const initialGrade = result === null ? "" : String(result.grade)
+  const [gradeInput, setGradeInput] = useState(initialGrade)
   const [wholeNumberWarning, setWholeNumberWarning] = useState<string | null>(
     null
   )
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const hasUnsavedChanges = gradeInput !== initialGrade
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   const parsedGrade = Number(gradeInput)
   const hasValidPreview =
@@ -123,29 +133,28 @@ export function GradingPanel({
     setError(null)
 
     try {
-      const response =
+      const payload =
         result === null
-          ? await fetch("/api/results", {
+          ? await fetchApi<ResultWithRelations>("/api/results", {
               method: "POST",
-              headers: requestHeaders(userId, role),
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 submissionId: submission.id,
                 grade: roundedGrade,
               }),
             })
-          : await fetch(`/api/results/${result.id}`, {
-              method: "PATCH",
-              headers: requestHeaders(userId, role),
-              body: JSON.stringify({
-                grade: roundedGrade,
-              }),
-            })
-      const payload =
-        result === null
-          ? ((await response.json()) as ApiResponse<ResultWithRelations>)
-          : ((await response.json()) as ResultMutationResponse)
+          : await fetchApi<ResultWithRelations, ResultMutationResponse>(
+              `/api/results/${result.id}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  grade: roundedGrade,
+                }),
+              }
+            )
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         setError(payload.error ?? "Could not save grade")
         return
       }
@@ -170,18 +179,27 @@ export function GradingPanel({
   async function updatePublishState(isPublished: boolean) {
     if (result === null) return
 
+    if (
+      hasUnsavedChanges &&
+      !window.confirm("You have unsaved grade changes. Leave anyway?")
+    ) {
+      return
+    }
+
     setIsSaving(true)
     setError(null)
 
     try {
-      const response = await fetch(`/api/results/${result.id}`, {
+      const payload = await fetchApi<
+        ResultWithRelations,
+        ResultMutationResponse
+      >(`/api/results/${result.id}`, {
         method: "PATCH",
-        headers: requestHeaders(userId, role),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPublished }),
       })
-      const payload = (await response.json()) as ResultMutationResponse
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         setError(payload.error ?? "Could not update result")
         return
       }
@@ -196,8 +214,20 @@ export function GradingPanel({
     }
   }
 
+  function requestOpenChange(open: boolean) {
+    if (!open && hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        "You have unsaved grade changes. Leave anyway?"
+      )
+
+      if (!confirmed) return
+    }
+
+    onOpenChange(open)
+  }
+
   return (
-    <Dialog open={submission !== null} onOpenChange={onOpenChange}>
+    <Dialog open={submission !== null} onOpenChange={requestOpenChange}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-xl">
         {submission !== null && (
           <>
@@ -277,6 +307,17 @@ export function GradingPanel({
                 </Alert>
               )}
 
+              {submission.isLate && (
+                <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                  <AlertTitle>Late submission</AlertTitle>
+                  <AlertDescription>
+                    This is a late submission - submitted on{" "}
+                    {formatDateTime(submission.submittedAt)}. Apply your late
+                    penalty policy before grading if applicable.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="grid gap-2">
                 <Label htmlFor="grade-input">Grade</Label>
                 <Input
@@ -321,7 +362,7 @@ export function GradingPanel({
                 type="button"
                 variant="outline"
                 disabled={isSaving}
-                onClick={() => onOpenChange(false)}
+                onClick={() => requestOpenChange(false)}
               >
                 Cancel
               </Button>
@@ -374,12 +415,4 @@ function Detail({
       <p className={cn("mt-1", mono && "font-mono")}>{value}</p>
     </div>
   )
-}
-
-function requestHeaders(userId: string | null, role: string | null) {
-  return {
-    "Content-Type": "application/json",
-    "x-user-id": userId ?? "",
-    "x-user-role": role ?? "",
-  }
 }

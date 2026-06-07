@@ -14,7 +14,8 @@ import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { useRole } from "@/lib/context/role-context"
-import type { ApiResponse, UserListItem } from "@/lib/types"
+import { fetchApi } from "@/lib/api-client"
+import type { UserListItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const staffLinks = [
@@ -51,12 +52,14 @@ export function NavShell() {
 
     async function loadCurrentUser() {
       try {
-        const response = await fetch(`/api/users?role=${role}`, {
-          signal: controller.signal,
-        })
-        const payload = (await response.json()) as ApiResponse<UserListItem[]>
+        const payload = await fetchApi<UserListItem[]>(
+          `/api/users?role=${role}`,
+          {
+            signal: controller.signal,
+          }
+        )
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           return
         }
 

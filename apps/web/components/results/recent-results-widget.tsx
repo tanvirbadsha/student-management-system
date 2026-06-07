@@ -13,8 +13,8 @@ import {
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { ClassificationBadge } from "@/components/results/classification-badge"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   PaginatedApiResponse,
   ResultWithRelations,
   StudentWithRelations,
@@ -29,25 +29,19 @@ export function RecentResultsWidget({ userId }: { userId: string }) {
 
     async function loadRecentResults() {
       try {
-        const studentResponse = await fetch(
-          `/api/students?userId=${encodeURIComponent(userId)}&limit=1`,
-          { signal: controller.signal }
-        )
-        const studentPayload =
-          (await studentResponse.json()) as PaginatedApiResponse<
-            StudentWithRelations[]
-          >
+        const studentPayload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?userId=${encodeURIComponent(userId)}&limit=1`, {
+          signal: controller.signal,
+        })
         const student = studentPayload.data?.[0]
 
-        if (
-          !studentResponse.ok ||
-          studentPayload.error !== null ||
-          student === undefined
-        ) {
+        if (studentPayload.error !== null || student === undefined) {
           return
         }
 
-        const resultsResponse = await fetch(
+        const resultsPayload = await fetchApi<ResultWithRelations[]>(
           `/api/results/student/${encodeURIComponent(student.id)}`,
           {
             headers: {
@@ -57,11 +51,8 @@ export function RecentResultsWidget({ userId }: { userId: string }) {
             signal: controller.signal,
           }
         )
-        const resultsPayload = (await resultsResponse.json()) as ApiResponse<
-          ResultWithRelations[]
-        >
 
-        if (!resultsResponse.ok || resultsPayload.error !== null) return
+        if (resultsPayload.error !== null) return
 
         setResults(
           resultsPayload.data

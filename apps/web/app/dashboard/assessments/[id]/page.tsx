@@ -39,10 +39,11 @@ import { toast } from "sonner"
 import { ClassificationBadge } from "@/components/results/classification-badge"
 import { GradingPanel } from "@/components/results/grading-panel"
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   AssessmentDetail,
   AssessmentMutationResponse,
+  AssessmentWithRelations,
   PaginatedApiResponse,
   ResultWithRelations,
   StudentWithRelations,
@@ -81,17 +82,15 @@ export default function AssessmentDetailPage() {
 
     async function loadAssessment() {
       try {
-        const response = await fetch(`/api/assessments/${id}`, {
-          signal: controller.signal,
-        })
-        const payload = (await response.json()) as ApiResponse<AssessmentDetail>
+        const payload = await fetchApi<AssessmentDetail>(
+          `/api/assessments/${id}`,
+          {
+            signal: controller.signal,
+          }
+        )
 
-        if (!response.ok || payload.error !== null) {
-          throw new Error(
-            response.status === 404
-              ? "Assessment not found"
-              : (payload.error ?? "Could not load assessment")
-          )
+        if (payload.error !== null) {
+          throw new Error(payload.error ?? "Could not load assessment")
         }
 
         const students = await loadProgrammeStudents(
@@ -142,7 +141,10 @@ export default function AssessmentDetailPage() {
     setWarning(null)
 
     try {
-      const response = await fetch(`/api/assessments/${id}`, {
+      const payload = await fetchApi<
+        AssessmentWithRelations,
+        AssessmentMutationResponse
+      >(`/api/assessments/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -153,9 +155,8 @@ export default function AssessmentDetailPage() {
           deadline: parsedDeadline.toISOString(),
         }),
       })
-      const payload = (await response.json()) as AssessmentMutationResponse
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         setEditError(fieldMessage(payload.error))
         return
       }
@@ -496,15 +497,15 @@ async function loadProgrammeStudents(
   programmeId: string,
   signal: AbortSignal
 ): Promise<StudentWithRelations[]> {
-  const firstResponse = await fetch(
+  const firstPayload = await fetchApi<
+    StudentWithRelations[],
+    PaginatedApiResponse<StudentWithRelations[]>
+  >(
     `/api/students?programme=${encodeURIComponent(programmeId)}&limit=100&page=1`,
     { signal }
   )
-  const firstPayload = (await firstResponse.json()) as PaginatedApiResponse<
-    StudentWithRelations[]
-  >
 
-  if (!firstResponse.ok || firstPayload.error !== null) {
+  if (firstPayload.error !== null) {
     throw new Error(firstPayload.error ?? "Could not load programme students")
   }
 
@@ -514,15 +515,15 @@ async function loadProgrammeStudents(
     Array.from(
       { length: firstPayload.pagination.totalPages - 1 },
       async (_, index) => {
-        const response = await fetch(
+        const payload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(
           `/api/students?programme=${encodeURIComponent(programmeId)}&limit=100&page=${index + 2}`,
           { signal }
         )
-        const payload = (await response.json()) as PaginatedApiResponse<
-          StudentWithRelations[]
-        >
 
-        if (!response.ok || payload.error !== null) {
+        if (payload.error !== null) {
           throw new Error(payload.error ?? "Could not load programme students")
         }
 

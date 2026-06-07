@@ -31,8 +31,8 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
 
 import { useRole } from "@/lib/context/role-context"
+import { fetchApi } from "@/lib/api-client"
 import type {
-  ApiResponse,
   AssessmentWithRelations,
   PaginatedApiResponse,
   StudentWithRelations,
@@ -73,16 +73,14 @@ export default function MySubmissionsPage() {
 
     async function loadData() {
       try {
-        const studentResponse = await fetch(
-          `/api/students?userId=${encodeURIComponent(currentUserId)}&limit=1`,
-          { signal: controller.signal }
-        )
-        const studentPayload =
-          (await studentResponse.json()) as PaginatedApiResponse<
-            StudentWithRelations[]
-          >
+        const studentPayload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?userId=${encodeURIComponent(currentUserId)}&limit=1`, {
+          signal: controller.signal,
+        })
 
-        if (!studentResponse.ok || studentPayload.error !== null) {
+        if (studentPayload.error !== null) {
           throw new Error(studentPayload.error ?? "Could not load student")
         }
 
@@ -91,32 +89,24 @@ export default function MySubmissionsPage() {
           throw new Error("Student profile not found")
         }
 
-        const [assessmentsResponse, submissionsResponse] = await Promise.all([
-          fetch(
+        const [assessmentsPayload, submissionsPayload] = await Promise.all([
+          fetchApi<AssessmentWithRelations[]>(
             `/api/assessments?programmeId=${encodeURIComponent(currentStudent.programme.id)}`,
             { signal: controller.signal }
           ),
-          fetch(
+          fetchApi<SubmissionWithRelations[]>(
             `/api/submissions?studentId=${encodeURIComponent(currentStudent.id)}`,
             { signal: controller.signal }
           ),
         ])
-        const assessmentsPayload =
-          (await assessmentsResponse.json()) as ApiResponse<
-            AssessmentWithRelations[]
-          >
-        const submissionsPayload =
-          (await submissionsResponse.json()) as ApiResponse<
-            SubmissionWithRelations[]
-          >
 
-        if (!assessmentsResponse.ok || assessmentsPayload.error !== null) {
+        if (assessmentsPayload.error !== null) {
           throw new Error(
             assessmentsPayload.error ?? "Could not load assessments"
           )
         }
 
-        if (!submissionsResponse.ok || submissionsPayload.error !== null) {
+        if (submissionsPayload.error !== null) {
           throw new Error(
             submissionsPayload.error ?? "Could not load submissions"
           )
@@ -172,25 +162,38 @@ export default function MySubmissionsPage() {
       return
     }
 
+    const isLateInitialSubmission =
+      new Date(selectedAssessment.deadline) <= new Date() &&
+      !submissions.some(
+        (submission) => submission.assessmentId === selectedAssessment.id
+      )
+
+    if (isLateInitialSubmission) {
+      const confirmed = window.confirm(
+        "The deadline for this assessment has passed. Your submission will be marked as late. Do you want to continue?"
+      )
+
+      if (!confirmed) return
+    }
+
     setIsUploading(true)
     setFileError(null)
     const formData = new FormData()
     formData.set("assessmentId", selectedAssessment.id)
     formData.set("studentId", student.id)
     formData.set("file", selectedFile)
+    formData.set("lateConfirmed", String(isLateInitialSubmission))
 
     try {
-      const response = await fetch("/api/submissions", {
-        method: "POST",
-        headers: {
-          "x-user-id": userId ?? "",
-        },
-        body: formData,
-      })
-      const payload =
-        (await response.json()) as ApiResponse<SubmissionWithRelations>
+      const payload = await fetchApi<SubmissionWithRelations>(
+        "/api/submissions",
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         if (payload.error?.includes("Resubmission is no longer allowed")) {
           setFileError(
             "The deadline has passed. You can no longer replace your submission."
@@ -278,6 +281,9 @@ export default function MySubmissionsPage() {
           {assessments.map((assessment) => {
             const submission = submissionByAssessment.get(assessment.id)
             const isClosed = new Date(assessment.deadline) <= new Date()
+            const enrolmentInactive =
+              student.status === "WITHDRAWN" || student.status === "COMPLETED"
+            const canOpenUpload = !isClosed || submission === undefined
 
             return (
               <Card key={assessment.id}>
@@ -337,21 +343,33 @@ export default function MySubmissionsPage() {
                   )}
                 </CardContent>
                 <CardFooter>
-                  {!isClosed && (
-                    <Button
+                  {canOpenUpload && (
+                    <span
                       className="w-full"
-                      variant={submission === undefined ? "default" : "outline"}
-                      onClick={() => setSelectedAssessment(assessment)}
+                      title={
+                        enrolmentInactive
+                          ? "Your enrolment is not active. Contact Registry."
+                          : undefined
+                      }
                     >
-                      <HugeiconsIcon
-                        icon={Upload01Icon}
-                        strokeWidth={2}
-                        data-icon="inline-start"
-                      />
-                      {submission === undefined
-                        ? "Upload File"
-                        : "Replace File"}
-                    </Button>
+                      <Button
+                        className="w-full"
+                        variant={
+                          submission === undefined ? "default" : "outline"
+                        }
+                        disabled={enrolmentInactive}
+                        onClick={() => setSelectedAssessment(assessment)}
+                      >
+                        <HugeiconsIcon
+                          icon={Upload01Icon}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                        />
+                        {submission === undefined
+                          ? "Upload File"
+                          : "Replace File"}
+                      </Button>
+                    </span>
                   )}
                 </CardFooter>
               </Card>

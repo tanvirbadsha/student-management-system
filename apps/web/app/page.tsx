@@ -34,7 +34,8 @@ import {
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
 import { useRole } from "@/lib/context/role-context"
-import type { ApiResponse, RoleToggleState, UserListItem } from "@/lib/types"
+import { fetchApi } from "@/lib/api-client"
+import type { RoleToggleState, UserListItem } from "@/lib/types"
 
 const roleOptions = [
   {
@@ -86,12 +87,14 @@ export default function RoleSelectorPage() {
     setUsers([])
 
     try {
-      const response = await fetch(`/api/users?role=${nextRole}`, {
-        signal: controller.signal,
-      })
-      const payload = (await response.json()) as ApiResponse<UserListItem[]>
+      const payload = await fetchApi<UserListItem[]>(
+        `/api/users?role=${nextRole}`,
+        {
+          signal: controller.signal,
+        }
+      )
 
-      if (!response.ok || payload.error !== null) {
+      if (payload.error !== null) {
         throw new Error(payload.error ?? "Could not load users")
       }
 

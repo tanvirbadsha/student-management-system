@@ -57,6 +57,11 @@ export const marksheetAssessmentSelect = {
       code: true,
     },
   },
+  _count: {
+    select: {
+      submissions: true,
+    },
+  },
 } satisfies Prisma.AssessmentSelect
 
 type ResultRecord = Prisma.ResultGetPayload<{
@@ -87,8 +92,11 @@ export function serializeMarksheetAssessment(
   assessment: MarksheetAssessmentRecord
 ) {
   return {
-    ...assessment,
+    id: assessment.id,
+    title: assessment.title,
     deadline: assessment.deadline.toISOString(),
+    module: assessment.module,
+    submissionCount: assessment._count.submissions,
   }
 }
 
