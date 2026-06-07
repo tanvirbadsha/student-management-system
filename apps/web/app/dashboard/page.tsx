@@ -2,11 +2,10 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@workspace/ui/components/card"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
-import { StudentFeeWidget } from "@/components/fees/student-fee-widget"
-import { RecentResultsWidget } from "@/components/results/recent-results-widget"
+import { StaffDashboard } from "@/components/dashboard/staff-dashboard"
+import { StudentDashboard } from "@/components/dashboard/student-dashboard"
 import { useRole } from "@/lib/context/role-context"
 
 export default function DashboardPage() {
@@ -21,43 +20,25 @@ export default function DashboardPage() {
 
   if (role === null) {
     return (
-      <div className="space-y-3" aria-label="Loading dashboard">
+      <div className="space-y-6" aria-label="Loading dashboard">
         <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-28 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-80 w-full" />
       </div>
     )
   }
 
   if (role === "STAFF") {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <h1 className="font-heading text-2xl font-semibold">
-            Staff Dashboard — coming in next prompt
-          </h1>
-        </CardContent>
-      </Card>
-    )
+    return <StaffDashboard />
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Student Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your registry overview
-        </p>
-      </div>
-      {userId === null ? (
-        <Skeleton className="h-40 w-full" />
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <StudentFeeWidget userId={userId} />
-          <RecentResultsWidget userId={userId} />
-        </div>
-      )}
-    </div>
+  return userId === null ? (
+    <Skeleton className="h-96 w-full" />
+  ) : (
+    <StudentDashboard userId={userId} />
   )
 }

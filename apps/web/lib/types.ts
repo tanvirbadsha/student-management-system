@@ -273,3 +273,61 @@ export type MarksheetData = {
   results: ResultWithRelations[]
   summary?: MarksheetSummary
 }
+
+export type StaffDashboardPayment = {
+  payment: PaymentRecord
+  student: {
+    studentId: string
+    user: {
+      fullName: string
+    }
+  }
+}
+
+export type StaffDashboardData = {
+  studentCounts: {
+    total: number
+    enrolled: number
+    deferred: number
+    withdrawn: number
+    completed: number
+  }
+  overdueFees: {
+    count: number
+    totalOutstanding: number
+  }
+  openAssessments: {
+    count: number
+    totalSubmissions: number
+    assessments: AssessmentWithRelations[]
+  }
+  pendingGrades: number
+  recentEnrolments: StudentWithRelations[]
+  recentPayments: StaffDashboardPayment[]
+}
+
+export type DashboardSubmission = {
+  id: string
+  submittedAt: string
+  isLate: boolean
+}
+
+export type StudentDashboardData = {
+  student: StudentWithRelations
+  fee: FeeWithPayments | null
+  recentResults: ResultWithRelations[]
+  openAssessments: Array<{
+    assessment: AssessmentWithRelations
+    submission: DashboardSubmission | null
+  }>
+  submissionStats: {
+    total: number
+    onTime: number
+    late: number
+    notSubmitted: number
+  }
+  resultStats: {
+    published: number
+    averageGrade: number | null
+  }
+}
