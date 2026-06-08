@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  Download01Icon,
   Search01Icon,
   UserAdd01Icon,
   UserGroupIcon,
@@ -70,6 +71,10 @@ type FormValues = {
   academicYear: string
 }
 
+type BulkStatusResponse = {
+  updated: number
+}
+
 const initialForm: FormValues = {
   fullName: "",
   email: "",
@@ -83,6 +88,12 @@ const statusOptions = [
   { value: "ENROLLED", label: "Enrolled" },
   { value: "DEFERRED", label: "Deferred" },
   { value: "WITHDRAWN", label: "Withdrawn" },
+  { value: "COMPLETED", label: "Completed" },
+] as const
+
+const bulkStatusOptions = [
+  { value: "ENROLLED", label: "Enrolled" },
+  { value: "DEFERRED", label: "Deferred" },
   { value: "COMPLETED", label: "Completed" },
 ] as const
 
@@ -123,6 +134,11 @@ function StudentsView({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState<FormValues>(initialForm)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(
+    () => new Set()
+  )
+  const [bulkStatus, setBulkStatus] = useState("ENROLLED")
+  const [isApplyingBulkStatus, setIsApplyingBulkStatus] = useState(false)
 
   useEffect(() => {
     if (isStudent) {
@@ -154,6 +170,12 @@ function StudentsView({
 
         setStudents(payload.data)
         setPagination(payload.pagination)
+        setSelectedStudentIds((current) => {
+          const pageIds = new Set(payload.data.map((student) => student.id))
+          return new Set(
+            Array.from(current).filter((studentId) => pageIds.has(studentId))
+          )
+        })
         setLoadError(null)
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -235,6 +257,96 @@ function StudentsView({
 
   function clearFilters() {
     router.push("/dashboard/students", { scroll: false })
+  }
+
+  function downloadCsv() {
+    const exportParams = new URLSearchParams()
+    const search = params.get("search")
+    const programme = params.get("programme")
+    const status = params.get("status")
+
+    if (search !== null && search !== "") {
+      exportParams.set("search", search)
+    }
+
+    if (programme !== null && programme !== "") {
+      exportParams.set("programme", programme)
+    }
+
+    if (status !== null && status !== "") {
+      exportParams.set("status", status)
+    }
+
+    const query = exportParams.toString()
+    window.location.href =
+      query === "" ? "/api/students/export" : `/api/students/export?${query}`
+  }
+
+  function toggleStudentSelection(studentId: string, checked: boolean) {
+    setSelectedStudentIds((current) => {
+      const next = new Set(current)
+
+      if (checked) {
+        next.add(studentId)
+      } else {
+        next.delete(studentId)
+      }
+
+      return next
+    })
+  }
+
+  function togglePageSelection(checked: boolean) {
+    setSelectedStudentIds(() =>
+      checked ? new Set(students.map((student) => student.id)) : new Set()
+    )
+  }
+
+  async function applyBulkStatus() {
+    const selectedCount = selectedStudentIds.size
+    const statusLabel = bulkStatusOptions.find(
+      (option) => option.value === bulkStatus
+    )?.label
+
+    if (
+      selectedCount === 0 ||
+      statusLabel === undefined ||
+      !window.confirm(
+        `Change status of ${selectedCount} students to ${statusLabel}?`
+      )
+    ) {
+      return
+    }
+
+    setIsApplyingBulkStatus(true)
+
+    try {
+      const payload = await fetchApi<BulkStatusResponse>(
+        "/api/students/bulk-status",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentIds: Array.from(selectedStudentIds),
+            status: bulkStatus,
+          }),
+        }
+      )
+
+      if (payload.error !== null) {
+        toast.error(payload.error)
+        return
+      }
+
+      setSelectedStudentIds(new Set())
+      setIsLoading(true)
+      setRefreshToken((token) => token + 1)
+      toast.success(`Updated ${payload.data.updated} students`)
+    } catch {
+      toast.error("Could not update selected students. Please try again.")
+    } finally {
+      setIsApplyingBulkStatus(false)
+    }
   }
 
   function updateForm(field: keyof FormValues, value: string) {
@@ -363,6 +475,13 @@ function StudentsView({
     (params.get("search") ?? "") !== "" ||
     programmeFilter !== "ALL" ||
     statusFilter !== "ALL"
+  const selectedCount = selectedStudentIds.size
+  const allPageSelected =
+    students.length > 0 &&
+    students.every((student) => selectedStudentIds.has(student.id))
+  const somePageSelected =
+    students.some((student) => selectedStudentIds.has(student.id)) &&
+    !allPageSelected
 
   return (
     <div className="space-y-6">
@@ -370,14 +489,24 @@ function StudentsView({
         title="Student Enrolment"
         subtitle="Registry of all enrolled students"
         action={
-          <Button onClick={() => setDialogOpen(true)}>
-            <HugeiconsIcon
-              icon={UserAdd01Icon}
-              strokeWidth={2}
-              data-icon="inline-start"
-            />
-            Enrol New Student
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={downloadCsv}>
+              <HugeiconsIcon
+                icon={Download01Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+              Export CSV
+            </Button>
+            <Button onClick={() => setDialogOpen(true)}>
+              <HugeiconsIcon
+                icon={UserAdd01Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+              Enrol New Student
+            </Button>
+          </div>
         }
       />
 
@@ -473,10 +602,65 @@ function StudentsView({
         />
       ) : (
         <>
+          {selectedCount > 0 && (
+            <div className="sticky top-3 z-10 flex flex-col gap-3 rounded-md border border-border bg-surface-elevated p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-medium">
+                {selectedCount} student{selectedCount === 1 ? "" : "s"} selected
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Select
+                  value={bulkStatus}
+                  disabled={isApplyingBulkStatus}
+                  onValueChange={setBulkStatus}
+                >
+                  <SelectTrigger className="h-9 w-full sm:w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bulkStatusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  disabled={isApplyingBulkStatus}
+                  onClick={applyBulkStatus}
+                >
+                  {isApplyingBulkStatus ? "Applying..." : "Apply to Selected"}
+                </Button>
+                <Button
+                  variant="link"
+                  disabled={isApplyingBulkStatus}
+                  onClick={() => setSelectedStudentIds(new Set())}
+                >
+                  Clear selection
+                </Button>
+              </div>
+            </div>
+          )}
+
           <Card className="py-0">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all students on this page"
+                      checked={allPageSelected}
+                      ref={(element) => {
+                        if (element !== null) {
+                          element.indeterminate = somePageSelected
+                        }
+                      }}
+                      className="size-4 rounded border-border accent-accent"
+                      onChange={(event) =>
+                        togglePageSelection(event.target.checked)
+                      }
+                    />
+                  </TableHead>
                   <TableHead>Student ID</TableHead>
                   <TableHead>Full Name</TableHead>
                   <TableHead>Programme</TableHead>
@@ -490,7 +674,28 @@ function StudentsView({
               </TableHeader>
               <TableBody>
                 {students.map((student) => (
-                  <TableRow key={student.id}>
+                  <TableRow
+                    key={student.id}
+                    data-state={
+                      selectedStudentIds.has(student.id)
+                        ? "selected"
+                        : undefined
+                    }
+                  >
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${student.user.fullName}`}
+                        checked={selectedStudentIds.has(student.id)}
+                        className="size-4 rounded border-border accent-accent"
+                        onChange={(event) =>
+                          toggleStudentSelection(
+                            student.id,
+                            event.target.checked
+                          )
+                        }
+                      />
+                    </TableCell>
                     <TableCell className="font-mono font-medium">
                       {student.studentId}
                     </TableCell>

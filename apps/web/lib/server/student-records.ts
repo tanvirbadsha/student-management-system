@@ -8,6 +8,7 @@ export const studentListSelect = {
   academicYear: true,
   status: true,
   enrolledAt: true,
+  withdrawalDate: true,
   dateOfBirth: true,
   user: {
     select: {
@@ -84,6 +85,7 @@ export function serializeStudent(student: StudentRecord): StudentWithRelations {
   return {
     ...student,
     enrolledAt: student.enrolledAt.toISOString(),
+    withdrawalDate: student.withdrawalDate?.toISOString() ?? null,
     dateOfBirth: student.dateOfBirth.toISOString(),
     fee:
       student.fee === null

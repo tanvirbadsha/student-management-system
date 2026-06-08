@@ -1,4 +1,4 @@
-import { EnrolmentStatus, Prisma } from "@prisma/client"
+import { EnrolmentStatus, Prisma, Role } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import {
@@ -22,6 +22,10 @@ type StudentUpdateInput = {
 
 type RouteContext = {
   params: Promise<{ id: string }>
+}
+
+type DeleteStudentResponse = {
+  deleted: true
 }
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -179,6 +183,76 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
+export async function DELETE(request: Request, context: RouteContext) {
+  const { id } = await context.params
+  const role = request.headers.get("x-user-role")?.trim()
+
+  if (role !== Role.STAFF) {
+    return forbiddenError<DeleteStudentResponse>("Staff access required")
+  }
+
+  try {
+    const student = await prisma.student.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        _count: {
+          select: {
+            submissions: true,
+            results: true,
+          },
+        },
+        fee: {
+          select: {
+            _count: {
+              select: {
+                payments: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (student === null) {
+      return notFoundError<DeleteStudentResponse>("Student not found")
+    }
+
+    const hasHistory =
+      student._count.submissions > 0 ||
+      student._count.results > 0 ||
+      (student.fee?._count.payments ?? 0) > 0
+
+    if (hasHistory) {
+      return validationError<DeleteStudentResponse>(
+        "Student has existing records and cannot be deleted. Use withdraw instead."
+      )
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.student.delete({ where: { id } })
+      await tx.user.delete({ where: { id: student.userId } })
+    })
+
+    const response: ApiResponse<DeleteStudentResponse> = {
+      data: { deleted: true },
+      error: null,
+    }
+
+    return Response.json(response)
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return notFoundError<DeleteStudentResponse>("Student not found")
+    }
+
+    return internalServerError<DeleteStudentResponse>()
+  }
+}
+
 function validateStudentUpdateInput(
   body: unknown
 ): ApiResponse<StudentUpdateInput> {
@@ -257,6 +331,11 @@ function validationError<T>(error: string) {
 function notFoundError<T>(error: string) {
   const response: ApiResponse<T> = { data: null, error }
   return Response.json(response, { status: 404 })
+}
+
+function forbiddenError<T>(error: string) {
+  const response: ApiResponse<T> = { data: null, error }
+  return Response.json(response, { status: 403 })
 }
 
 function internalServerError<T>() {

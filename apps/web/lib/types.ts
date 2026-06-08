@@ -36,6 +36,7 @@ export type StudentWithRelations = {
   academicYear: number
   status: PrismaEnrolmentStatus
   enrolledAt: string
+  withdrawalDate: string | null
   dateOfBirth: string
   user: {
     id: string
@@ -86,6 +87,16 @@ export type StudentDetail = StudentWithRelations & {
 export type StudentMutationResponse =
   | { data: StudentWithRelations; error: null; note?: string }
   | { data: null; error: string }
+
+export type StudentNoteRecord = {
+  id: string
+  authorId: string
+  content: string
+  createdAt: string
+  author: {
+    fullName: string
+  }
+}
 
 export type PaymentRecord = {
   id: string

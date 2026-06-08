@@ -4,9 +4,13 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
+  Add01Icon,
   ArrowLeft01Icon,
+  ArrowDataTransferHorizontalIcon,
+  Delete02Icon,
   Edit02Icon,
   LockIcon,
+  WasteIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -54,9 +58,21 @@ import { fetchApi } from "@/lib/api-client"
 import type {
   StudentDetail,
   StudentMutationResponse,
+  StudentNoteRecord,
   StudentWithRelations,
 } from "@/lib/types"
-import { formatDate } from "@/lib/utils"
+import { formatDate, formatDateTime } from "@/lib/utils"
+
+type ProgrammeOption = {
+  id: string
+  name: string
+  code: string
+  durationYears: number
+}
+
+type DeleteResponse = {
+  deleted: true
+}
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -66,11 +82,26 @@ export default function StudentDetailPage() {
   const [student, setStudent] = useState<StudentDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
   const [editOpen, setEditOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [status, setStatus] = useState("")
   const [academicYear, setAcademicYear] = useState("")
   const [editError, setEditError] = useState<string | null>(null)
+  const [programmes, setProgrammes] = useState<ProgrammeOption[]>([])
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState("")
+  const [isTransferring, setIsTransferring] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<StudentNoteRecord[]>([])
+  const [notesRefreshToken, setNotesRefreshToken] = useState(0)
+  const [notesLoadError, setNotesLoadError] = useState<string | null>(null)
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+  const [noteContent, setNoteContent] = useState("")
+  const [noteError, setNoteError] = useState<string | null>(null)
+  const [isNoteSubmitting, setIsNoteSubmitting] = useState(false)
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (role === null) {
@@ -112,7 +143,71 @@ export default function StudentDetailPage() {
 
     void loadStudent()
     return () => controller.abort()
-  }, [id])
+  }, [id, refreshToken])
+
+  useEffect(() => {
+    if (!isStaff) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    async function loadProgrammes() {
+      try {
+        const payload = await fetchApi<ProgrammeOption[]>("/api/programmes", {
+          signal: controller.signal,
+        })
+
+        if (payload.error === null) {
+          setProgrammes(payload.data)
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          toast.error("Could not load programmes")
+        }
+      }
+    }
+
+    void loadProgrammes()
+    return () => controller.abort()
+  }, [isStaff])
+
+  useEffect(() => {
+    if (!isStaff) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    async function loadNotes() {
+      try {
+        const payload = await fetchApi<StudentNoteRecord[]>(
+          `/api/students/${id}/notes`,
+          {
+            signal: controller.signal,
+          }
+        )
+
+        if (payload.error !== null) {
+          throw new Error(payload.error)
+        }
+
+        setNotes(payload.data)
+        setNotesLoadError(null)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return
+        }
+
+        setNotesLoadError(
+          error instanceof Error ? error.message : "Could not load notes"
+        )
+      }
+    }
+
+    void loadNotes()
+    return () => controller.abort()
+  }, [id, isStaff, notesRefreshToken])
 
   async function saveChanges(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -167,6 +262,175 @@ export default function StudentDetailPage() {
       setEditError("Could not update student. Please try again.")
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function transferProgramme(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (selectedProgrammeId === "") {
+      setTransferError("Select a new programme")
+      return
+    }
+
+    setIsTransferring(true)
+    setTransferError(null)
+
+    try {
+      const payload = await fetchApi<
+        StudentWithRelations,
+        StudentMutationResponse
+      >(`/api/students/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ programmeId: selectedProgrammeId }),
+      })
+
+      if (payload.error !== null) {
+        setTransferError(cleanApiError(payload.error))
+        return
+      }
+
+      setTransferOpen(false)
+      setSelectedProgrammeId("")
+      setIsLoading(true)
+      setRefreshToken((token) => token + 1)
+      toast.success("Programme transferred — fee updated")
+    } catch {
+      setTransferError("Could not transfer programme. Please try again.")
+    } finally {
+      setIsTransferring(false)
+    }
+  }
+
+  async function withdrawStudent() {
+    if (
+      !window.confirm(
+        "Withdraw this student? This keeps the record but marks the student as withdrawn."
+      )
+    ) {
+      return
+    }
+
+    setIsWithdrawing(true)
+
+    try {
+      const payload = await fetchApi<
+        StudentWithRelations,
+        StudentMutationResponse
+      >(`/api/students/${id}/withdraw`, {
+        method: "PATCH",
+      })
+
+      if (payload.error !== null) {
+        toast.error(payload.error)
+        return
+      }
+
+      setStudent((current) =>
+        current === null ? current : { ...current, ...payload.data }
+      )
+      toast.success("Student withdrawn")
+    } catch {
+      toast.error("Could not withdraw student. Please try again.")
+    } finally {
+      setIsWithdrawing(false)
+    }
+  }
+
+  async function deleteStudentRecord() {
+    if (
+      !window.confirm(
+        "Delete this accidental enrolment record? This is only allowed when the student has no payments, submissions, or results."
+      )
+    ) {
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      const payload = await fetchApi<DeleteResponse>(`/api/students/${id}`, {
+        method: "DELETE",
+      })
+
+      if (payload.error !== null) {
+        toast.error(payload.error)
+        return
+      }
+
+      toast.success("Student record deleted")
+      router.push("/dashboard/students")
+    } catch {
+      toast.error("Could not delete student record. Please try again.")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  async function addNote(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const content = noteContent.trim()
+
+    if (content === "") {
+      setNoteError("Note content is required")
+      return
+    }
+
+    if (content.length > 1000) {
+      setNoteError("Note content must be 1000 characters or fewer")
+      return
+    }
+
+    setIsNoteSubmitting(true)
+    setNoteError(null)
+
+    try {
+      const payload = await fetchApi<StudentNoteRecord>(
+        `/api/students/${id}/notes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        }
+      )
+
+      if (payload.error !== null) {
+        setNoteError(cleanApiError(payload.error))
+        return
+      }
+
+      setNoteDialogOpen(false)
+      setNoteContent("")
+      setNotesRefreshToken((token) => token + 1)
+      toast.success("Note added")
+    } catch {
+      setNoteError("Could not add note. Please try again.")
+    } finally {
+      setIsNoteSubmitting(false)
+    }
+  }
+
+  async function deleteNote(noteId: string) {
+    if (!window.confirm("Delete this note?")) {
+      return
+    }
+
+    try {
+      const payload = await fetchApi<DeleteResponse>(
+        `/api/students/notes/${noteId}`,
+        { method: "DELETE" }
+      )
+
+      if (payload.error !== null) {
+        toast.error(payload.error)
+        return
+      }
+
+      setNotesRefreshToken((token) => token + 1)
+      toast.success("Note deleted")
+    } catch {
+      toast.error("Could not delete note. Please try again.")
     }
   }
 
@@ -238,22 +502,42 @@ export default function StudentDetailPage() {
             </p>
           </div>
           {isStaff && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setStatus(student.status)
-                setAcademicYear(String(student.academicYear))
-                setEditError(null)
-                setEditOpen(true)
-              }}
-            >
-              <HugeiconsIcon
-                icon={Edit02Icon}
-                strokeWidth={2}
-                data-icon="inline-start"
-              />
-              Edit
-            </Button>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStatus(student.status)
+                  setAcademicYear(String(student.academicYear))
+                  setEditError(null)
+                  setEditOpen(true)
+                }}
+              >
+                <HugeiconsIcon
+                  icon={Edit02Icon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                Edit
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const nextProgramme = programmes.find(
+                    (programme) => programme.id !== student.programme.id
+                  )
+                  setSelectedProgrammeId(nextProgramme?.id ?? "")
+                  setTransferError(null)
+                  setTransferOpen(true)
+                }}
+              >
+                <HugeiconsIcon
+                  icon={ArrowDataTransferHorizontalIcon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                Transfer Programme
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -267,9 +551,7 @@ export default function StudentDetailPage() {
         </Alert>
       )}
 
-      <Tabs
-        defaultValue={searchParams.get("tab") === "fees" ? "fees" : "overview"}
-      >
+      <Tabs defaultValue={initialTab(searchParams.get("tab"), isStaff)}>
         <TabsList
           className="w-full justify-start overflow-x-auto"
           variant="line"
@@ -279,6 +561,7 @@ export default function StudentDetailPage() {
           <TabsTrigger value="submissions">
             Submissions &amp; Results
           </TabsTrigger>
+          {isStaff && <TabsTrigger value="notes">Notes</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -313,8 +596,62 @@ export default function StudentDetailPage() {
                 label="Enrolled date"
                 value={formatDate(student.enrolledAt)}
               />
+              {student.withdrawalDate !== null && (
+                <InfoItem
+                  label="Withdrawal date"
+                  value={formatDate(student.withdrawalDate)}
+                />
+              )}
             </CardContent>
           </Card>
+
+          {isStaff && (
+            <Card className="mt-4 border-danger/40">
+              <CardHeader>
+                <CardTitle>Danger zone</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Student record actions</p>
+                  <p className="mt-1 max-w-2xl text-sm text-text-secondary">
+                    Withdraw keeps the registry record. Delete Record (no
+                    history) is only for accidental enrolments with no payments,
+                    submissions, or results.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    disabled={
+                      isWithdrawing ||
+                      student.status === "WITHDRAWN" ||
+                      student.status === "COMPLETED"
+                    }
+                    onClick={withdrawStudent}
+                  >
+                    <HugeiconsIcon
+                      icon={WasteIcon}
+                      strokeWidth={2}
+                      data-icon="inline-start"
+                    />
+                    {isWithdrawing ? "Withdrawing..." : "Withdraw Student"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={isDeleting}
+                    onClick={deleteStudentRecord}
+                  >
+                    <HugeiconsIcon
+                      icon={Delete02Icon}
+                      strokeWidth={2}
+                      data-icon="inline-start"
+                    />
+                    {isDeleting ? "Deleting..." : "Delete Record (no history)"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="fees" className="mt-4">
@@ -326,6 +663,77 @@ export default function StudentDetailPage() {
             Submissions &amp; Results — see Prompts 6 and 7
           </PlaceholderCard>
         </TabsContent>
+
+        {isStaff && (
+          <TabsContent value="notes" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle>Notes</CardTitle>
+                <Button
+                  onClick={() => {
+                    setNoteContent("")
+                    setNoteError(null)
+                    setNoteDialogOpen(true)
+                  }}
+                >
+                  <HugeiconsIcon
+                    icon={Add01Icon}
+                    strokeWidth={2}
+                    data-icon="inline-start"
+                  />
+                  Add Note
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {notesLoadError !== null ? (
+                  <p className="text-sm text-danger">{notesLoadError}</p>
+                ) : notes.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-text-secondary">
+                    No notes yet. Add a note to record registry actions for this
+                    student.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {notes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="rounded-md border border-border bg-surface-elevated p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {note.author.fullName}
+                            </p>
+                            <p className="mt-0.5 text-xs text-text-secondary">
+                              {formatDateTime(note.createdAt)}
+                            </p>
+                          </div>
+                          {note.authorId === userId && (
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label="Delete note"
+                              onClick={() => deleteNote(note.id)}
+                            >
+                              <HugeiconsIcon
+                                icon={Delete02Icon}
+                                strokeWidth={2}
+                              />
+                            </Button>
+                          )}
+                        </div>
+                        <p className="mt-3 text-sm whitespace-pre-wrap text-text-primary">
+                          {note.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog
@@ -412,6 +820,165 @@ export default function StudentDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={transferOpen}
+        onOpenChange={(open) => {
+          if (!isTransferring) {
+            setTransferOpen(open)
+          }
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(event) => {
+            if (isTransferring) {
+              event.preventDefault()
+            }
+          }}
+          onPointerDownOutside={(event) => {
+            if (isTransferring) {
+              event.preventDefault()
+            }
+          }}
+        >
+          <form onSubmit={transferProgramme}>
+            <DialogHeader>
+              <DialogTitle>Transfer to New Programme</DialogTitle>
+              <DialogDescription>
+                Current: {student.programme.name} ({student.programme.code})
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 grid gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="transfer-programme">Programme</Label>
+                <Select
+                  value={selectedProgrammeId}
+                  disabled={isTransferring}
+                  onValueChange={(value) => {
+                    setSelectedProgrammeId(value)
+                    setTransferError(null)
+                  }}
+                >
+                  <SelectTrigger id="transfer-programme" className="h-9 w-full">
+                    <SelectValue placeholder="Select a programme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {programmes
+                      .filter(
+                        (programme) => programme.id !== student.programme.id
+                      )
+                      .map((programme) => (
+                        <SelectItem key={programme.id} value={programme.id}>
+                          {programme.name} ({programme.code})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Alert>
+                <AlertTitle>Fee recalculation</AlertTitle>
+                <AlertDescription>
+                  Transferring programmes will recalculate this student&apos;s
+                  total fee based on the new programme&apos;s fee amount.
+                  Existing payments will be retained and deducted from the new
+                  total.
+                </AlertDescription>
+              </Alert>
+
+              {transferError !== null && (
+                <p className="text-sm text-danger">{transferError}</p>
+              )}
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isTransferring}
+                onClick={() => setTransferOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isTransferring}>
+                {isTransferring ? "Transferring..." : "Confirm Transfer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={noteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isNoteSubmitting) {
+            setNoteDialogOpen(open)
+          }
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(event) => {
+            if (isNoteSubmitting) {
+              event.preventDefault()
+            }
+          }}
+          onPointerDownOutside={(event) => {
+            if (isNoteSubmitting) {
+              event.preventDefault()
+            }
+          }}
+        >
+          <form onSubmit={addNote}>
+            <DialogHeader>
+              <DialogTitle>Add Note</DialogTitle>
+              <DialogDescription>
+                Record a registry action for this student.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 grid gap-2">
+              <Label htmlFor="student-note">Note</Label>
+              <textarea
+                id="student-note"
+                rows={4}
+                maxLength={1000}
+                value={noteContent}
+                disabled={isNoteSubmitting}
+                className="min-h-28 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm transition-colors outline-none placeholder:text-text-muted focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-50"
+                onChange={(event) => {
+                  setNoteContent(event.target.value)
+                  setNoteError(null)
+                }}
+              />
+              <div className="flex items-center justify-between gap-3">
+                {noteError !== null ? (
+                  <p className="text-xs text-danger">{noteError}</p>
+                ) : (
+                  <span />
+                )}
+                <p className="text-xs text-text-secondary">
+                  {noteContent.length}/1000
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isNoteSubmitting}
+                onClick={() => setNoteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isNoteSubmitting}>
+                {isNoteSubmitting ? "Adding..." : "Add Note"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -433,6 +1000,24 @@ function PlaceholderCard({ children }: { children: React.ReactNode }) {
       </CardContent>
     </Card>
   )
+}
+
+function initialTab(tab: string | null, isStaff: boolean) {
+  if (tab === "fees" || tab === "submissions") {
+    return tab
+  }
+
+  if (tab === "notes" && isStaff) {
+    return tab
+  }
+
+  return "overview"
+}
+
+function cleanApiError(error: string) {
+  return error.includes(":")
+    ? error.slice(error.indexOf(":") + 1).trim()
+    : error
 }
 
 function DetailSkeleton() {
