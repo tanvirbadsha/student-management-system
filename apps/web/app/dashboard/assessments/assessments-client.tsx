@@ -7,6 +7,7 @@ import {
   Add01Icon,
   Calendar01Icon,
   File01Icon,
+  MoreVerticalIcon,
   Upload01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -27,6 +28,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import {
@@ -108,7 +116,6 @@ export function AssessmentsClient() {
     Partial<Record<keyof CreateForm, string>>
   >({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   useEffect(() => {
     if (role === null) {
@@ -300,7 +307,6 @@ export function AssessmentsClient() {
         return
       }
 
-      setOpenMenuId(null)
       setIsLoading(true)
       setRefreshToken((token) => token + 1)
       toast.success(isArchived ? "Assessment archived" : "Assessment restored")
@@ -317,7 +323,12 @@ export function AssessmentsClient() {
     try {
       const payload = await fetchApi<DeleteResponse>(
         `/api/assessments/${assessment.id}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          headers: {
+            "x-user-role": role ?? "",
+          },
+        }
       )
 
       if (payload.error !== null) {
@@ -325,7 +336,6 @@ export function AssessmentsClient() {
         return
       }
 
-      setOpenMenuId(null)
       setIsLoading(true)
       setRefreshToken((token) => token + 1)
       toast.success("Assessment deleted")
@@ -403,10 +413,6 @@ export function AssessmentsClient() {
               key={assessment.id}
               assessment={assessment}
               referenceTime={referenceTime}
-              menuOpen={openMenuId === assessment.id}
-              onMenuOpenChange={(open) =>
-                setOpenMenuId(open ? assessment.id : null)
-              }
               onArchive={() => updateArchiveState(assessment, true)}
               onRestore={() => updateArchiveState(assessment, false)}
               onDelete={() => deleteAssessment(assessment)}
@@ -503,16 +509,12 @@ export function AssessmentsClient() {
 function AssessmentCard({
   assessment,
   referenceTime,
-  menuOpen,
-  onMenuOpenChange,
   onArchive,
   onRestore,
   onDelete,
 }: {
   assessment: AssessmentWithRelations
   referenceTime: number
-  menuOpen: boolean
-  onMenuOpenChange: (open: boolean) => void
   onArchive: () => void
   onRestore: () => void
   onDelete: () => void
@@ -534,63 +536,45 @@ function AssessmentCard({
                 {assessment.module.code}
               </span>
             </Badge>
-            <div className="relative">
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                aria-label="Assessment actions"
-                onClick={() => onMenuOpenChange(!menuOpen)}
-              >
-                ...
-              </Button>
-              {menuOpen && (
-                <div className="absolute top-7 right-0 z-20 w-36 rounded-md border border-border bg-surface p-1 shadow-lg">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link href={`/dashboard/assessments/${assessment.id}`}>
-                      Edit
-                    </Link>
-                  </Button>
-                  {assessment.isArchived ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={onRestore}
-                    >
-                      Restore
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={onArchive}
-                    >
-                      Archive
-                    </Button>
-                  )}
-                  {assessment._count.submissions === 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start text-danger"
-                      onClick={onDelete}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Assessment actions"
+                >
+                  <HugeiconsIcon icon={MoreVerticalIcon} strokeWidth={2} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/assessments/${assessment.id}`}>
+                    Edit
+                  </Link>
+                </DropdownMenuItem>
+                {assessment.isArchived ? (
+                  <DropdownMenuItem onSelect={onRestore}>
+                    Restore
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onSelect={onArchive}>
+                    Archive
+                  </DropdownMenuItem>
+                )}
+                {assessment._count.submissions === 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-danger focus:text-danger"
+                      onSelect={onDelete}
                     >
                       Delete
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">

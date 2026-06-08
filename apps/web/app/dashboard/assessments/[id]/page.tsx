@@ -474,7 +474,7 @@ export default function AssessmentDetailPage() {
           if (!open) setPreviewSubmission(null)
         }}
       >
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent className="flex h-[90vh] flex-col sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>Preview / Download</DialogTitle>
             <DialogDescription>
@@ -488,7 +488,7 @@ export default function AssessmentDetailPage() {
             <iframe
               title="Submission preview"
               src={previewSubmission.fileUrl}
-              className="h-[90vh] max-h-[720px] w-full rounded-md border border-border"
+              className="min-h-0 flex-1 rounded-md border border-border"
             />
           ) : (
             <div className="rounded-md border border-border bg-surface-elevated p-6 text-center">
