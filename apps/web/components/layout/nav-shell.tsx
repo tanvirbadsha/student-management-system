@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 const staffLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/students", label: "Students" },
+  { href: "/dashboard/programmes", label: "Programmes" },
   { href: "/dashboard/fees", label: "Fees" },
   { href: "/dashboard/assessments", label: "Assessments" },
   { href: "/dashboard/marksheet", label: "Marksheet" },
