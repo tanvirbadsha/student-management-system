@@ -22,6 +22,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -111,7 +112,7 @@ export function StaffDashboard() {
         subtitle="Registry operations overview"
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard
           label="Total Students"
           value={String(data.studentCounts.total)}
@@ -266,6 +267,9 @@ export function StaffDashboard() {
             <CardTitle>Open Assessments</CardTitle>
           </CardHeader>
           <Table>
+            <TableCaption className="sr-only">
+              Open assessments summary
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>Assessment Title</TableHead>
@@ -333,7 +337,7 @@ function StaffDashboardSkeleton() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-64" />
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton key={index} className="h-28 w-full" />
         ))}

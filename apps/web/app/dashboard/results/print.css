@@ -1,0 +1,31 @@
+@media print {
+  header,
+  nav,
+  button,
+  [data-print-hide="true"] {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  [data-print-header="marksheet"] {
+    display: block !important;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #000000;
+    padding-bottom: 0.75rem;
+  }
+
+  [data-print-results-grid="true"] {
+    display: block !important;
+  }
+
+  [data-print-result-card="true"] {
+    break-inside: avoid;
+    margin-bottom: 0.75rem;
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+  }
+}

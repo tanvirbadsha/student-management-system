@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import {
   Card,
   CardContent,
@@ -24,6 +25,8 @@ import type {
 } from "@/lib/types"
 import { formatDateTime } from "@/lib/utils"
 
+import "./print.css"
+
 export default function StudentResultsPage() {
   const router = useRouter()
   const { role, userId, isStaff, isStudent } = useRole()
@@ -31,6 +34,7 @@ export default function StudentResultsPage() {
   const [awaitingGrade, setAwaitingGrade] = useState<SubmissionWithRelations[]>(
     []
   )
+  const [student, setStudent] = useState<StudentWithRelations | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -59,20 +63,20 @@ export default function StudentResultsPage() {
           throw new Error(studentPayload.error ?? "Could not load student")
         }
 
-        const student = studentPayload.data[0]
-        if (student === undefined) {
+        const currentStudent = studentPayload.data[0]
+        if (currentStudent === undefined) {
           throw new Error("Student profile not found")
         }
 
         const [resultsPayload, submissionsPayload] = await Promise.all([
           fetchApi<ResultWithRelations[]>(
-            `/api/results/student/${encodeURIComponent(student.id)}`,
+            `/api/results/student/${encodeURIComponent(currentStudent.id)}`,
             {
               signal: controller.signal,
             }
           ),
           fetchApi<SubmissionWithRelations[]>(
-            `/api/submissions?studentId=${encodeURIComponent(student.id)}`,
+            `/api/submissions?studentId=${encodeURIComponent(currentStudent.id)}`,
             {
               signal: controller.signal,
             }
@@ -96,6 +100,7 @@ export default function StudentResultsPage() {
           resultsPayload.data.map((result) => result.submissionId)
         )
 
+        setStudent(currentStudent)
         setResults(published)
         setAwaitingGrade(
           submissionsPayload.data.filter(
@@ -137,7 +142,23 @@ export default function StudentResultsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Results" subtitle="Published assessment results" />
+      <div data-print-header="marksheet" className="hidden">
+        <h1 className="text-xl font-semibold">
+          Student Marksheet — {student?.user.fullName} — {student?.studentId}
+        </h1>
+        <p className="mt-1 text-sm">Registry Module</p>
+        <p className="text-sm">Printed {new Date().toLocaleDateString("en-GB")}</p>
+      </div>
+
+      <PageHeader
+        title="My Results"
+        subtitle="Published assessment results"
+        action={
+          <Button data-print-hide="true" variant="outline" onClick={() => window.print()}>
+            Print Marksheet
+          </Button>
+        }
+      />
 
       {loadError !== null ? (
         <Card>
@@ -167,9 +188,12 @@ export default function StudentResultsPage() {
             </Card>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+            data-print-results-grid="true"
+          >
             {results.map((result) => (
-              <Card key={result.id}>
+              <Card key={result.id} data-print-result-card="true">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <div>

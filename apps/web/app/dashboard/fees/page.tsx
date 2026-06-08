@@ -13,6 +13,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableFooter,
   TableHead,
@@ -193,6 +194,9 @@ export default function FeesPage() {
               ) : (
                 <Card className="py-0">
                   <Table>
+                    <TableCaption className="sr-only">
+                      Overdue student fee balances
+                    </TableCaption>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Student ID</TableHead>
@@ -277,6 +281,9 @@ function AllStudentFeesTable({
   return (
     <Card className="py-0">
       <Table>
+        <TableCaption className="sr-only">
+          All student fee balances
+        </TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>Student ID</TableHead>

@@ -17,7 +17,12 @@ export type UserListItem = {
 
 export type ApiResponse<T> =
   | { data: T; error: null }
-  | { data: null; error: string }
+  | {
+      data: null
+      error: string
+      status?: number
+      errorKind?: "api" | "server" | "network" | "invalid-response"
+    }
 
 export type Pagination = {
   page: number

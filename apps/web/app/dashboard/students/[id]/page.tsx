@@ -53,6 +53,7 @@ import { toast } from "sonner"
 
 import { StatusBadge } from "@/components/students/status-badge"
 import { StudentFees } from "@/components/fees/student-fees"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import type {
@@ -102,6 +103,11 @@ export default function StudentDetailPage() {
   const [isNoteSubmitting, setIsNoteSubmitting] = useState(false)
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<
+    "withdraw" | "delete-student" | null
+  >(null)
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
+  const [isDeletingNote, setIsDeletingNote] = useState(false)
 
   useEffect(() => {
     if (role === null) {
@@ -304,14 +310,6 @@ export default function StudentDetailPage() {
   }
 
   async function withdrawStudent() {
-    if (
-      !window.confirm(
-        "Withdraw this student? This keeps the record but marks the student as withdrawn."
-      )
-    ) {
-      return
-    }
-
     setIsWithdrawing(true)
 
     try {
@@ -330,6 +328,7 @@ export default function StudentDetailPage() {
       setStudent((current) =>
         current === null ? current : { ...current, ...payload.data }
       )
+      setConfirmAction(null)
       toast.success("Student withdrawn")
     } catch {
       toast.error("Could not withdraw student. Please try again.")
@@ -339,14 +338,6 @@ export default function StudentDetailPage() {
   }
 
   async function deleteStudentRecord() {
-    if (
-      !window.confirm(
-        "Delete this accidental enrolment record? This is only allowed when the student has no payments, submissions, or results."
-      )
-    ) {
-      return
-    }
-
     setIsDeleting(true)
 
     try {
@@ -411,14 +402,12 @@ export default function StudentDetailPage() {
     }
   }
 
-  async function deleteNote(noteId: string) {
-    if (!window.confirm("Delete this note?")) {
-      return
-    }
-
+  async function deleteNote() {
+    if (noteToDelete === null) return
+    setIsDeletingNote(true)
     try {
       const payload = await fetchApi<DeleteResponse>(
-        `/api/students/notes/${noteId}`,
+        `/api/students/notes/${noteToDelete}`,
         { method: "DELETE" }
       )
 
@@ -428,9 +417,12 @@ export default function StudentDetailPage() {
       }
 
       setNotesRefreshToken((token) => token + 1)
+      setNoteToDelete(null)
       toast.success("Note deleted")
     } catch {
       toast.error("Could not delete note. Please try again.")
+    } finally {
+      setIsDeletingNote(false)
     }
   }
 
@@ -627,7 +619,7 @@ export default function StudentDetailPage() {
                       student.status === "WITHDRAWN" ||
                       student.status === "COMPLETED"
                     }
-                    onClick={withdrawStudent}
+                    onClick={() => setConfirmAction("withdraw")}
                   >
                     <HugeiconsIcon
                       icon={WasteIcon}
@@ -639,7 +631,7 @@ export default function StudentDetailPage() {
                   <Button
                     variant="destructive"
                     disabled={isDeleting}
-                    onClick={deleteStudentRecord}
+                    onClick={() => setConfirmAction("delete-student")}
                   >
                     <HugeiconsIcon
                       icon={Delete02Icon}
@@ -714,7 +706,7 @@ export default function StudentDetailPage() {
                               size="icon-sm"
                               variant="ghost"
                               aria-label="Delete note"
-                              onClick={() => deleteNote(note.id)}
+                              onClick={() => setNoteToDelete(note.id)}
                             >
                               <HugeiconsIcon
                                 icon={Delete02Icon}
@@ -979,6 +971,42 @@ export default function StudentDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmAction === "withdraw"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title="Withdraw Student"
+        description="This will mark the student as Withdrawn. This cannot be automatically reversed."
+        confirmLabel="Withdraw Student"
+        isLoading={isWithdrawing}
+        onConfirm={() => void withdrawStudent()}
+      />
+
+      <ConfirmDialog
+        open={confirmAction === "delete-student"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title="Delete Student Record"
+        description="This will permanently delete an accidental enrolment record if it has no payments, submissions, or results."
+        confirmLabel="Delete Student Record"
+        isLoading={isDeleting}
+        onConfirm={() => void deleteStudentRecord()}
+      />
+
+      <ConfirmDialog
+        open={noteToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setNoteToDelete(null)
+        }}
+        title="Delete Note"
+        description="This will permanently delete this registry note."
+        confirmLabel="Delete Note"
+        isLoading={isDeletingNote}
+        onConfirm={() => void deleteNote()}
+      />
     </div>
   )
 }

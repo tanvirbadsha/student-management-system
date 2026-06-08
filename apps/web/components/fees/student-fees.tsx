@@ -36,6 +36,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -470,6 +471,9 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
           </CardContent>
         ) : (
           <Table>
+            <TableCaption className="sr-only">
+              Student payment history
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>
@@ -518,6 +522,9 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
             </CardContent>
           ) : (
             <Table>
+              <TableCaption className="sr-only">
+                Student fee adjustment history
+              </TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead>Type</TableHead>

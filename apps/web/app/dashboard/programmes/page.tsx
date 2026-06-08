@@ -34,6 +34,7 @@ import { toast } from "sonner"
 
 import { EmptyState } from "@/components/ui/empty-state"
 import { PageHeader } from "@/components/ui/page-header"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
 import { cn, formatCurrency } from "@/lib/utils"
@@ -130,6 +131,10 @@ export default function ProgrammesPage() {
   >({})
   const [isSubmittingProgramme, setIsSubmittingProgramme] = useState(false)
   const [isSubmittingModule, setIsSubmittingModule] = useState(false)
+  const [moduleToDelete, setModuleToDelete] = useState<ModuleRecord | null>(
+    null
+  )
+  const [isDeletingModule, setIsDeletingModule] = useState(false)
   const [blockedDelete, setBlockedDelete] = useState<{
     code: string
     count: number
@@ -210,6 +215,30 @@ export default function ProgrammesPage() {
   function selectProgramme(programmeId: string) {
     setSelectedProgrammeId(programmeId)
     setShowMobileDetail(true)
+  }
+
+  function focusProgramme(offset: number) {
+    const nextIndex = Math.max(
+      0,
+      Math.min(programmes.length - 1, offset)
+    )
+    const nextButton = document.querySelector<HTMLButtonElement>(
+      `[data-programme-index="${nextIndex}"]`
+    )
+    nextButton?.focus()
+  }
+
+  function handleProgrammeKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault()
+      focusProgramme(index + 1)
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault()
+      focusProgramme(index - 1)
+    }
   }
 
   function updateProgrammeForm(field: keyof ProgrammeForm, value: string) {
@@ -391,7 +420,7 @@ export default function ProgrammesPage() {
     }
   }
 
-  async function deleteModule(module: ModuleRecord) {
+  async function requestDeleteModule(module: ModuleRecord) {
     try {
       const checkPayload = await fetchApi<ModuleWithAssessmentCount>(
         `/api/modules/${module.id}`
@@ -410,14 +439,19 @@ export default function ProgrammesPage() {
         return
       }
 
-      if (
-        !window.confirm(`Delete module ${module.code}? This cannot be undone.`)
-      ) {
-        return
-      }
+      setModuleToDelete(module)
+    } catch {
+      toast.error("Could not connect. Please check your connection and try again.")
+    }
+  }
 
+  async function deleteModule() {
+    if (moduleToDelete === null) return
+
+    setIsDeletingModule(true)
+    try {
       const deletePayload = await fetchApi<DeleteResponse>(
-        `/api/modules/${module.id}`,
+        `/api/modules/${moduleToDelete.id}`,
         { method: "DELETE" }
       )
 
@@ -427,9 +461,12 @@ export default function ProgrammesPage() {
       }
 
       refreshProgrammes(selectedProgrammeId ?? undefined)
+      setModuleToDelete(null)
       toast.success("Module deleted")
     } catch {
-      toast.error("Could not delete module")
+      toast.error("Could not connect. Please check your connection and try again.")
+    } finally {
+      setIsDeletingModule(false)
     }
   }
 
@@ -508,16 +545,18 @@ export default function ProgrammesPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {programmes.map((programme) => (
+                {programmes.map((programme, index) => (
                   <button
                     key={programme.id}
                     type="button"
+                    data-programme-index={index}
                     className={cn(
                       "grid w-full gap-2 border-l-4 border-transparent px-4 py-4 text-left transition-colors hover:bg-row-hover",
                       selectedProgrammeId === programme.id &&
                         "border-l-accent bg-surface-elevated"
                     )}
                     onClick={() => selectProgramme(programme.id)}
+                    onKeyDown={(event) => handleProgrammeKeyDown(event, index)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <p className="font-semibold text-text-primary">
@@ -576,7 +615,7 @@ export default function ProgrammesPage() {
                   setModuleErrors({})
                   setModuleOpen(true)
                 }}
-                onDeleteModule={deleteModule}
+                onDeleteModule={requestDeleteModule}
               />
             )}
           </section>
@@ -649,6 +688,18 @@ export default function ProgrammesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={moduleToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setModuleToDelete(null)
+        }}
+        title="Delete Module"
+        description={`This will permanently delete module ${moduleToDelete?.code ?? ""}. This cannot be undone.`}
+        confirmLabel="Delete Module"
+        isLoading={isDeletingModule}
+        onConfirm={() => void deleteModule()}
+      />
     </div>
   )
 }
@@ -812,20 +863,30 @@ function ProgrammeDialog({
           </DialogHeader>
 
           <div className="mt-4 grid gap-4">
-            <FormField label="Programme Name" error={errors.name}>
+            <FormField id="programme-name" label="Programme Name" error={errors.name}>
               <Input
+                id="programme-name"
                 value={form.name}
                 disabled={isSubmitting}
+                aria-required="true"
+                aria-describedby={
+                  errors.name !== undefined ? "programme-name-error" : undefined
+                }
                 onChange={(event) => onChange("name", event.target.value)}
               />
             </FormField>
 
-            <FormField label="Code" error={errors.code}>
+            <FormField id="programme-code" label="Code" error={errors.code}>
               <Input
+                id="programme-code"
                 value={form.code}
                 placeholder="e.g. BSC-CS"
                 readOnly={isEdit}
                 disabled={isSubmitting && !isEdit}
+                aria-required={!isEdit}
+                aria-describedby={
+                  errors.code !== undefined ? "programme-code-error" : undefined
+                }
                 title={
                   isEdit
                     ? "Programme code cannot be changed after creation"
@@ -837,18 +898,25 @@ function ProgrammeDialog({
               />
             </FormField>
 
-            <FormField label="Fee Amount" error={errors.feeAmount}>
+            <FormField id="programme-fee" label="Fee Amount" error={errors.feeAmount}>
               <div className="relative">
                 <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-text-secondary">
                   £
                 </span>
                 <Input
+                  id="programme-fee"
                   type="number"
                   min="0.01"
                   step="0.01"
                   value={form.feeAmount}
                   disabled={isSubmitting}
                   className="pl-7"
+                  aria-required="true"
+                  aria-describedby={
+                    errors.feeAmount !== undefined
+                      ? "programme-fee-error"
+                      : undefined
+                  }
                   onChange={(event) =>
                     onChange("feeAmount", event.target.value)
                   }
@@ -856,9 +924,14 @@ function ProgrammeDialog({
               </div>
             </FormField>
 
-            <FormField label="Duration" error={errors.durationYears}>
+            <FormField
+              id="programme-duration"
+              label="Duration"
+              error={errors.durationYears}
+            >
               <div className="relative">
                 <Input
+                  id="programme-duration"
                   type="number"
                   min="1"
                   max="6"
@@ -866,6 +939,12 @@ function ProgrammeDialog({
                   value={form.durationYears}
                   disabled={isSubmitting}
                   className="pr-14"
+                  aria-required="true"
+                  aria-describedby={
+                    errors.durationYears !== undefined
+                      ? "programme-duration-error"
+                      : undefined
+                  }
                   onChange={(event) =>
                     onChange("durationYears", event.target.value)
                   }
@@ -942,18 +1021,28 @@ function ModuleDialog({
           </DialogHeader>
 
           <div className="mt-4 grid gap-4">
-            <FormField label="Module Title" error={errors.title}>
+            <FormField id="module-title" label="Module Title" error={errors.title}>
               <Input
+                id="module-title"
                 value={form.title}
                 disabled={isSubmitting}
+                aria-required="true"
+                aria-describedby={
+                  errors.title !== undefined ? "module-title-error" : undefined
+                }
                 onChange={(event) => onChange("title", event.target.value)}
               />
             </FormField>
-            <FormField label="Module Code" error={errors.code}>
+            <FormField id="module-code" label="Module Code" error={errors.code}>
               <Input
+                id="module-code"
                 value={form.code}
                 placeholder="e.g. CS301"
                 disabled={isSubmitting}
+                aria-required="true"
+                aria-describedby={
+                  errors.code !== undefined ? "module-code-error" : undefined
+                }
                 onBlur={() => onChange("code", form.code.toUpperCase())}
                 onChange={(event) => onChange("code", event.target.value)}
               />
@@ -980,19 +1069,25 @@ function ModuleDialog({
 }
 
 function FormField({
+  id,
   label,
   error,
   children,
 }: {
+  id: string
   label: string
   error?: string
   children: React.ReactNode
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
-      {error !== undefined && <p className="text-xs text-danger">{error}</p>}
+      {error !== undefined && (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

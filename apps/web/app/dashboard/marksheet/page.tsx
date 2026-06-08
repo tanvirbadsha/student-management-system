@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { Classification } from "@prisma/client"
 import { useRouter } from "next/navigation"
+import { Edit02Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -19,10 +21,12 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Progress } from "@workspace/ui/components/progress"
 import { Switch } from "@workspace/ui/components/switch"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -35,6 +39,7 @@ import {
   GradingPanel,
   type GradingSubmission,
 } from "@/components/results/grading-panel"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PageHeader } from "@/components/ui/page-header"
 import { StatCard } from "@/components/ui/stat-card"
 import { useRole } from "@/lib/context/role-context"
@@ -73,6 +78,7 @@ export default function MarksheetPage() {
     done: number
     total: number
   } | null>(null)
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (isStudent) {
@@ -196,7 +202,10 @@ export default function MarksheetPage() {
         current === null ? current : replaceResult(current, result)
       )
       toast.error(
-        error instanceof Error ? error.message : "Could not update result"
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again.",
+        { duration: 6000 }
       )
     } finally {
       setBusy(result.id, false)
@@ -205,12 +214,6 @@ export default function MarksheetPage() {
 
   async function publishAll() {
     if (unpublishedResults.length === 0) return
-
-    const confirmed = window.confirm(
-      `This will publish ${unpublishedResults.length} results and make them visible to students. Continue?`
-    )
-
-    if (!confirmed) return
 
     setPublishProgress({ done: 0, total: unpublishedResults.length })
 
@@ -235,7 +238,19 @@ export default function MarksheetPage() {
       return published.reduce(replaceResult, current)
     })
     setPublishProgress(null)
-    toast.success(`${published.length} results published. ${failed} failed.`)
+    setPublishConfirmOpen(false)
+
+    if (failed > 0) {
+      toast.error(`${failed} result publish requests failed.`, {
+        duration: 6000,
+      })
+    }
+
+    if (published.length > 0) {
+      toast.success(`${published.length} results published.`, {
+        duration: 4000,
+      })
+    }
   }
 
   function setBusy(resultId: string, busy: boolean) {
@@ -330,13 +345,21 @@ export default function MarksheetPage() {
                 disabled={
                   unpublishedResults.length === 0 || publishProgress !== null
                 }
-                onClick={publishAll}
+                onClick={() => setPublishConfirmOpen(true)}
               >
                 {publishProgress === null
                   ? "Publish All"
                   : `Publishing ${publishProgress.done}/${publishProgress.total}`}
               </Button>
             </CardHeader>
+            {publishProgress !== null && (
+              <CardContent className="border-t py-3">
+                <Progress
+                  value={(publishProgress.done / publishProgress.total) * 100}
+                  aria-label={`Publishing ${publishProgress.done} of ${publishProgress.total} results`}
+                />
+              </CardContent>
+            )}
 
             {marksheet.assessment.submissionCount === 0 ? (
               <CardContent className="border-t py-16 text-center text-sm text-text-secondary">
@@ -348,6 +371,9 @@ export default function MarksheetPage() {
               </CardContent>
             ) : (
               <Table>
+                <TableCaption className="sr-only">
+                  Assessment marksheet results
+                </TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Student ID</TableHead>
@@ -356,7 +382,9 @@ export default function MarksheetPage() {
                     <TableHead>Late</TableHead>
                     <TableHead>Grade</TableHead>
                     <TableHead>Classification</TableHead>
-                    <TableHead>Published</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Published
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -387,7 +415,7 @@ export default function MarksheetPage() {
                           classification={result.classification}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <Switch
                           checked={result.isPublished}
                           disabled={
@@ -402,9 +430,12 @@ export default function MarksheetPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-8 px-0 md:w-auto md:px-3"
+                          aria-label={`Edit grade for ${result.student.user.fullName}`}
                           onClick={() => setSelectedResult(result)}
                         >
-                          Edit Grade
+                          <HugeiconsIcon icon={Edit02Icon} strokeWidth={2} />
+                          <span className="hidden md:inline">Edit Grade</span>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -430,6 +461,15 @@ export default function MarksheetPage() {
           }}
         />
       )}
+      <ConfirmDialog
+        open={publishConfirmOpen}
+        onOpenChange={setPublishConfirmOpen}
+        title="Publish Results"
+        description={`This will publish ${unpublishedResults.length} results and make them visible to students.`}
+        confirmLabel="Publish Results"
+        isLoading={publishProgress !== null}
+        onConfirm={() => void publishAll()}
+      />
     </div>
   )
 

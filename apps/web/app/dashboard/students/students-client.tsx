@@ -33,9 +33,11 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Progress } from "@workspace/ui/components/progress"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -44,6 +46,7 @@ import {
 import { toast } from "sonner"
 
 import { StatusBadge } from "@/components/students/status-badge"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { EmptyState } from "@/components/ui/empty-state"
 import { PageHeader } from "@/components/ui/page-header"
 import { useRole } from "@/lib/context/role-context"
@@ -69,10 +72,6 @@ type FormValues = {
   dateOfBirth: string
   programmeId: string
   academicYear: string
-}
-
-type BulkStatusResponse = {
-  updated: number
 }
 
 const initialForm: FormValues = {
@@ -139,6 +138,11 @@ function StudentsView({
   )
   const [bulkStatus, setBulkStatus] = useState("ENROLLED")
   const [isApplyingBulkStatus, setIsApplyingBulkStatus] = useState(false)
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{
+    done: number
+    total: number
+  } | null>(null)
 
   useEffect(() => {
     if (isStudent) {
@@ -308,44 +312,76 @@ function StudentsView({
       (option) => option.value === bulkStatus
     )?.label
 
-    if (
-      selectedCount === 0 ||
-      statusLabel === undefined ||
-      !window.confirm(
-        `Change status of ${selectedCount} students to ${statusLabel}?`
-      )
-    ) {
+    if (selectedCount === 0 || statusLabel === undefined) {
       return
     }
 
     setIsApplyingBulkStatus(true)
+    setBulkProgress({ done: 0, total: selectedCount })
 
-    try {
-      const payload = await fetchApi<BulkStatusResponse>(
-        "/api/students/bulk-status",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            studentIds: Array.from(selectedStudentIds),
-            status: bulkStatus,
-          }),
+    const selectedIds = Array.from(selectedStudentIds)
+    const settled = await Promise.allSettled(
+      selectedIds.map(async (studentId) => {
+        try {
+          const payload = await fetchApi<StudentWithRelations>(
+            `/api/students/${studentId}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: bulkStatus }),
+            }
+          )
+
+          if (payload.error !== null) {
+            throw new Error(payload.error)
+          }
+
+          return payload.data
+        } finally {
+          setBulkProgress((current) =>
+            current === null
+              ? current
+              : { ...current, done: current.done + 1 }
+          )
         }
-      )
+      })
+    )
 
-      if (payload.error !== null) {
-        toast.error(payload.error)
-        return
-      }
+    const updated = settled.filter(
+      (entry) => entry.status === "fulfilled"
+    ).length
+    const failed = settled.length - updated
 
+    setIsApplyingBulkStatus(false)
+    setBulkProgress(null)
+    setBulkConfirmOpen(false)
+
+    if (updated > 0) {
       setSelectedStudentIds(new Set())
       setIsLoading(true)
       setRefreshToken((token) => token + 1)
-      toast.success(`Updated ${payload.data.updated} students`)
-    } catch {
-      toast.error("Could not update selected students. Please try again.")
-    } finally {
-      setIsApplyingBulkStatus(false)
+    }
+
+    if (failed > 0) {
+      toast.error(`${failed} student status updates failed`, { duration: 6000 })
+    }
+
+    if (updated > 0) {
+      toast.success(`Updated ${updated} students`, { duration: 4000 })
+    }
+  }
+
+  function openStudent(studentId: string) {
+    router.push(`/dashboard/students/${studentId}`)
+  }
+
+  function handleStudentRowKeyDown(
+    event: React.KeyboardEvent<HTMLTableRowElement>,
+    studentId: string
+  ) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      openStudent(studentId)
     }
   }
 
@@ -579,7 +615,7 @@ function StudentsView({
             </Button>
           </CardContent>
         </Card>
-      ) : isLoading ? (
+      ) : isLoading && students.length === 0 ? (
         <StudentTableSkeleton />
       ) : students.length === 0 ? (
         <EmptyState
@@ -626,9 +662,11 @@ function StudentsView({
                 </Select>
                 <Button
                   disabled={isApplyingBulkStatus}
-                  onClick={applyBulkStatus}
+                  onClick={() => setBulkConfirmOpen(true)}
                 >
-                  {isApplyingBulkStatus ? "Applying..." : "Apply to Selected"}
+                  {isApplyingBulkStatus
+                    ? `Updating ${bulkProgress?.total ?? selectedCount} students...`
+                    : "Apply to Selected"}
                 </Button>
                 <Button
                   variant="link"
@@ -638,11 +676,65 @@ function StudentsView({
                   Clear selection
                 </Button>
               </div>
+              {bulkProgress !== null && (
+                <Progress
+                  value={(bulkProgress.done / bulkProgress.total) * 100}
+                  aria-label={`Updating ${bulkProgress.done} of ${bulkProgress.total} students`}
+                  className="sm:col-span-2"
+                />
+              )}
             </div>
           )}
 
-          <Card className="py-0">
+          <div className="grid gap-3 md:hidden">
+            {students.map((student) => (
+              <button
+                key={student.id}
+                type="button"
+                className="rounded-md border border-border bg-surface p-4 text-left shadow-sm transition-colors hover:bg-row-hover focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                onClick={() => openStudent(student.id)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-text-secondary">
+                      {student.studentId}
+                    </p>
+                    <p className="mt-1 truncate font-semibold text-text-primary">
+                      {student.user.fullName}
+                    </p>
+                  </div>
+                  <StatusBadge status={student.status} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">
+                    <span className="font-mono text-sm">
+                      {student.programme.code}
+                    </span>
+                  </Badge>
+                  <span className="text-sm text-text-secondary">
+                    Outstanding{" "}
+                    {student.fee === null
+                      ? "—"
+                      : formatCurrency(student.fee.outstanding)}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <Card className="relative hidden py-0 md:flex">
+            {isLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
+                <span
+                  className="size-5 animate-spin rounded-full border-2 border-accent border-t-transparent"
+                  aria-label="Refreshing students"
+                />
+              </div>
+            )}
             <Table>
+              <TableCaption className="sr-only">
+                Student enrolment list
+              </TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -676,10 +768,17 @@ function StudentsView({
                 {students.map((student) => (
                   <TableRow
                     key={student.id}
+                    role="button"
+                    tabIndex={0}
                     data-state={
                       selectedStudentIds.has(student.id)
                         ? "selected"
                         : undefined
+                    }
+                    className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+                    onClick={() => openStudent(student.id)}
+                    onKeyDown={(event) =>
+                      handleStudentRowKeyDown(event, student.id)
                     }
                   >
                     <TableCell>
@@ -688,6 +787,7 @@ function StudentsView({
                         aria-label={`Select ${student.user.fullName}`}
                         checked={selectedStudentIds.has(student.id)}
                         className="size-4 rounded border-border accent-accent"
+                        onClick={(event) => event.stopPropagation()}
                         onChange={(event) =>
                           toggleStudentSelection(
                             student.id,
@@ -730,7 +830,12 @@ function StudentsView({
                     </TableCell>
                     <TableCell>{formatDate(student.enrolledAt)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <Link href={`/dashboard/students/${student.id}`}>
                           View
                         </Link>
@@ -831,6 +936,12 @@ function StudentsView({
                   id="fullName"
                   value={form.fullName}
                   disabled={isSubmitting}
+                  aria-required="true"
+                  aria-describedby={
+                    fieldErrors.fullName !== undefined
+                      ? "fullName-error"
+                      : undefined
+                  }
                   onChange={(event) =>
                     updateForm("fullName", event.target.value)
                   }
@@ -843,6 +954,10 @@ function StudentsView({
                   type="email"
                   value={form.email}
                   disabled={isSubmitting}
+                  aria-required="true"
+                  aria-describedby={
+                    fieldErrors.email !== undefined ? "email-error" : undefined
+                  }
                   onChange={(event) => updateForm("email", event.target.value)}
                 />
               </FormField>
@@ -858,6 +973,12 @@ function StudentsView({
                   max={maximumDateOfBirth()}
                   value={form.dateOfBirth}
                   disabled={isSubmitting}
+                  aria-required="true"
+                  aria-describedby={
+                    fieldErrors.dateOfBirth !== undefined
+                      ? "dateOfBirth-error"
+                      : undefined
+                  }
                   onChange={(event) =>
                     updateForm("dateOfBirth", event.target.value)
                   }
@@ -874,7 +995,16 @@ function StudentsView({
                   disabled={isSubmitting}
                   onValueChange={(value) => updateForm("programmeId", value)}
                 >
-                  <SelectTrigger id="programmeId" className="h-9 w-full">
+                  <SelectTrigger
+                    id="programmeId"
+                    className="h-9 w-full"
+                    aria-required="true"
+                    aria-describedby={
+                      fieldErrors.programmeId !== undefined
+                        ? "programmeId-error"
+                        : undefined
+                    }
+                  >
                     <SelectValue placeholder="Select a programme" />
                   </SelectTrigger>
                   <SelectContent>
@@ -903,6 +1033,12 @@ function StudentsView({
                   }
                   value={form.academicYear}
                   disabled={isSubmitting}
+                  aria-required="true"
+                  aria-describedby={
+                    fieldErrors.academicYear !== undefined
+                      ? "academicYear-error"
+                      : undefined
+                  }
                   onChange={(event) =>
                     updateForm("academicYear", event.target.value)
                   }
@@ -930,6 +1066,16 @@ function StudentsView({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        onOpenChange={setBulkConfirmOpen}
+        title="Update Student Status"
+        description={`This will update ${selectedCount} selected students to ${bulkStatusOptions.find((option) => option.value === bulkStatus)?.label ?? bulkStatus}.`}
+        confirmLabel="Update Students"
+        isLoading={isApplyingBulkStatus}
+        onConfirm={() => void applyBulkStatus()}
+      />
     </div>
   )
 }
@@ -949,7 +1095,11 @@ function FormField({
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error !== undefined && <p className="text-xs text-danger">{error}</p>}
+      {error !== undefined && (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

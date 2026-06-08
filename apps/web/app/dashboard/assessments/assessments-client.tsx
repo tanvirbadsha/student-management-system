@@ -50,6 +50,7 @@ import { toast } from "sonner"
 
 import { EmptyState } from "@/components/ui/empty-state"
 import { PageHeader } from "@/components/ui/page-header"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { UploadDialog } from "@/components/submissions/upload-dialog"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
@@ -116,6 +117,12 @@ export function AssessmentsClient() {
     Partial<Record<keyof CreateForm, string>>
   >({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<
+    | { type: "archive"; assessment: AssessmentWithRelations }
+    | { type: "delete"; assessment: AssessmentWithRelations }
+    | null
+  >(null)
+  const [isConfirming, setIsConfirming] = useState(false)
 
   useEffect(() => {
     if (role === null) {
@@ -283,15 +290,7 @@ export function AssessmentsClient() {
     assessment: AssessmentWithRelations,
     isArchived: boolean
   ) {
-    if (
-      isArchived &&
-      !window.confirm(
-        "Archive this assessment? Students will no longer be able to submit."
-      )
-    ) {
-      return
-    }
-
+    setIsConfirming(true)
     try {
       const payload = await fetchApi<AssessmentWithRelations>(
         `/api/assessments/${assessment.id}`,
@@ -309,17 +308,17 @@ export function AssessmentsClient() {
 
       setIsLoading(true)
       setRefreshToken((token) => token + 1)
+      setConfirmAction(null)
       toast.success(isArchived ? "Assessment archived" : "Assessment restored")
     } catch {
-      toast.error("Could not update assessment")
+      toast.error("Could not connect. Please check your connection and try again.")
+    } finally {
+      setIsConfirming(false)
     }
   }
 
   async function deleteAssessment(assessment: AssessmentWithRelations) {
-    if (!window.confirm("Permanently delete this assessment?")) {
-      return
-    }
-
+    setIsConfirming(true)
     try {
       const payload = await fetchApi<DeleteResponse>(
         `/api/assessments/${assessment.id}`,
@@ -338,9 +337,12 @@ export function AssessmentsClient() {
 
       setIsLoading(true)
       setRefreshToken((token) => token + 1)
+      setConfirmAction(null)
       toast.success("Assessment deleted")
     } catch {
-      toast.error("Could not delete assessment")
+      toast.error("Could not connect. Please check your connection and try again.")
+    } finally {
+      setIsConfirming(false)
     }
   }
 
@@ -413,13 +415,43 @@ export function AssessmentsClient() {
               key={assessment.id}
               assessment={assessment}
               referenceTime={referenceTime}
-              onArchive={() => updateArchiveState(assessment, true)}
+              onArchive={() => setConfirmAction({ type: "archive", assessment })}
               onRestore={() => updateArchiveState(assessment, false)}
-              onDelete={() => deleteAssessment(assessment)}
+              onDelete={() => setConfirmAction({ type: "delete", assessment })}
             />
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title={
+          confirmAction?.type === "archive"
+            ? "Archive Assessment"
+            : "Delete Assessment"
+        }
+        description={
+          confirmAction?.type === "archive"
+            ? "Students will no longer be able to submit to this assessment."
+            : "This will permanently delete the assessment. This cannot be undone."
+        }
+        confirmLabel={
+          confirmAction?.type === "archive"
+            ? "Archive Assessment"
+            : "Delete Assessment"
+        }
+        isLoading={isConfirming}
+        onConfirm={() => {
+          if (confirmAction?.type === "archive") {
+            void updateArchiveState(confirmAction.assessment, true)
+          } else if (confirmAction?.type === "delete") {
+            void deleteAssessment(confirmAction.assessment)
+          }
+        }}
+      />
 
       <Dialog
         open={dialogOpen}
@@ -449,21 +481,39 @@ export function AssessmentsClient() {
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4 grid gap-4">
-              <FormField label="Title" error={errors.title}>
+              <FormField id="assessment-title" label="Title" error={errors.title}>
                 <Input
+                  id="assessment-title"
                   value={form.title}
                   maxLength={200}
                   disabled={isSubmitting}
+                  aria-required="true"
+                  aria-describedby={
+                    errors.title !== undefined ? "assessment-title-error" : undefined
+                  }
                   onChange={(event) => updateForm("title", event.target.value)}
                 />
               </FormField>
-              <FormField label="Module" error={errors.moduleId}>
+              <FormField
+                id="assessment-module"
+                label="Module"
+                error={errors.moduleId}
+              >
                 <Select
                   value={form.moduleId}
                   disabled={isSubmitting}
                   onValueChange={(value) => updateForm("moduleId", value)}
                 >
-                  <SelectTrigger className="h-9 w-full">
+                  <SelectTrigger
+                    id="assessment-module"
+                    className="h-9 w-full"
+                    aria-required="true"
+                    aria-describedby={
+                      errors.moduleId !== undefined
+                        ? "assessment-module-error"
+                        : undefined
+                    }
+                  >
                     <SelectValue placeholder="Select a module" />
                   </SelectTrigger>
                   <SelectContent>
@@ -475,11 +525,22 @@ export function AssessmentsClient() {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Deadline" error={errors.deadline}>
+              <FormField
+                id="assessment-deadline"
+                label="Deadline"
+                error={errors.deadline}
+              >
                 <Input
+                  id="assessment-deadline"
                   type="datetime-local"
                   value={form.deadline}
                   disabled={isSubmitting}
+                  aria-required="true"
+                  aria-describedby={
+                    errors.deadline !== undefined
+                      ? "assessment-deadline-error"
+                      : undefined
+                  }
                   onChange={(event) =>
                     updateForm("deadline", event.target.value)
                   }
@@ -884,19 +945,25 @@ function fileName(fileUrl: string): string {
 }
 
 function FormField({
+  id,
   label,
   error,
   children,
 }: {
+  id: string
   label: string
   error?: string
   children: React.ReactNode
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
-      {error !== undefined && <p className="text-xs text-danger">{error}</p>}
+      {error !== undefined && (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

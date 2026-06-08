@@ -24,6 +24,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -186,6 +187,9 @@ export default function MyFeesPage() {
           </CardContent>
         ) : (
           <Table>
+            <TableCaption className="sr-only">
+              My payment history
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>

@@ -124,6 +124,7 @@ export function NavShell() {
         <div className="ml-auto hidden items-center gap-3 lg:flex">
           {role !== null && (
             <Badge
+              aria-label={`Current role: ${role === "STAFF" ? "Staff" : "Student"}`}
               className={cn(
                 role === "STAFF"
                   ? "bg-accent text-accent-foreground"
@@ -153,6 +154,7 @@ export function NavShell() {
         <div className="ml-auto flex items-center gap-2 lg:hidden">
           {role !== null && (
             <Badge
+              aria-label={`Current role: ${role === "STAFF" ? "Staff" : "Student"}`}
               className={cn(
                 role === "STAFF"
                   ? "bg-accent text-accent-foreground"

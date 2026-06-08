@@ -224,7 +224,7 @@ export function StudentDashboard({ userId }: { userId: string }) {
         </Card>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard
           label="Total Submissions"
           value={String(data.submissionStats.total)}
@@ -394,7 +394,7 @@ function StudentDashboardSkeleton() {
         <Skeleton className="h-80 w-full" />
         <Skeleton className="h-80 w-full" />
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }, (_, index) => (
           <Skeleton key={index} className="h-28 w-full" />
         ))}

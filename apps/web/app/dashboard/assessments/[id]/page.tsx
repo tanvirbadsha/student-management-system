@@ -37,6 +37,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -342,6 +343,9 @@ export default function AssessmentDetailPage() {
           </CardContent>
         ) : (
           <Table>
+            <TableCaption className="sr-only">
+              Assessment submissions
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>Student ID</TableHead>

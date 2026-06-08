@@ -3,10 +3,16 @@ import type { ApiResponse } from "@/lib/types"
 const ROLE_STORAGE_KEY = "sms-role"
 const USER_ID_STORAGE_KEY = "sms-user-id"
 
+type FetchApiOptions<T, TResponse extends ApiResponse<T>> = RequestInit & {
+  onSuccess?: (payload: Extract<TResponse, { error: null }>) => void
+  onError?: (payload: Extract<TResponse, { data: null }>) => void
+}
+
 export async function fetchApi<
   T,
   TResponse extends ApiResponse<T> = ApiResponse<T>,
->(url: string, options: RequestInit = {}): Promise<TResponse> {
+>(url: string, options: FetchApiOptions<T, TResponse> = {}): Promise<TResponse> {
+  const { onSuccess, onError, ...requestOptions } = options
   const headers = new Headers(options.headers)
 
   if (typeof window !== "undefined") {
@@ -23,14 +29,28 @@ export async function fetchApi<
   }
 
   try {
-    const response = await fetch(url, { ...options, headers })
+    const response = await fetch(url, { ...requestOptions, headers })
     const payload = await parseResponse<T, TResponse>(response)
 
     if (!response.ok) {
-      return {
+      const errorPayload = {
         data: null,
-        error: payload.error ?? `Request failed with status ${response.status}`,
-      } as TResponse
+        error:
+          response.status >= 500
+            ? "An unexpected error occurred. Please try again."
+            : (payload.error ?? `Request failed with status ${response.status}`),
+        status: response.status,
+        errorKind: response.status >= 500 ? "server" : "api",
+      } as Extract<TResponse, { data: null }>
+
+      onError?.(errorPayload)
+      return errorPayload as TResponse
+    }
+
+    if (payload.error === null) {
+      onSuccess?.(payload as Extract<TResponse, { error: null }>)
+    } else {
+      onError?.(payload as Extract<TResponse, { data: null }>)
     }
 
     return payload
@@ -39,10 +59,14 @@ export async function fetchApi<
       throw error
     }
 
-    return {
+    const errorPayload = {
       data: null,
-      error: "Network error. Please check your connection.",
-    } as TResponse
+      error: "Could not connect. Please check your connection and try again.",
+      errorKind: "network",
+    } as Extract<TResponse, { data: null }>
+
+    onError?.(errorPayload)
+    return errorPayload as TResponse
   }
 }
 
@@ -63,11 +87,13 @@ async function parseResponse<T, TResponse extends ApiResponse<T>>(
     return {
       data: null,
       error: "Invalid server response",
+      errorKind: "invalid-response",
     } as TResponse
   } catch {
     return {
       data: null,
       error: "Invalid server response",
+      errorKind: "invalid-response",
     } as TResponse
   }
 }
