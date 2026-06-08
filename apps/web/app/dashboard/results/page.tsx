@@ -218,7 +218,7 @@ export default function StudentResultsPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {result.submission.isLate && (
-                      <Badge className="bg-danger-bg text-danger">
+                      <Badge className="bg-[#7f1d1d] text-white">
                         Submitted Late
                       </Badge>
                     )}

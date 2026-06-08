@@ -931,8 +931,8 @@ function StudentSubmissionStatus({
     <Badge
       className={cn(
         submission.isLate
-          ? "bg-danger-bg text-danger"
-          : "bg-success-bg text-success"
+          ? "bg-[#7f1d1d] text-white"
+          : "bg-[#14532d] text-white"
       )}
     >
       {submission.isLate ? "Late Submission" : "Submitted"}

@@ -380,15 +380,15 @@ function FeeStatusBadge({
   fee: NonNullable<StudentWithRelations["fee"]>
 }) {
   if (fee.isWaived) {
-    return <Badge className="bg-purple-50 text-purple-700">Waived</Badge>
+    return <Badge className="bg-[#312e81] text-white">Waived</Badge>
   }
 
   if (Math.round(fee.outstanding * 100) === 0) {
-    return <Badge className="bg-success-bg text-success">Fully Paid</Badge>
+    return <Badge className="bg-[#14532d] text-white">Fully Paid</Badge>
   }
 
   if (fee.isOverdue) {
-    return <Badge className="bg-danger-bg text-danger">Overdue</Badge>
+    return <Badge className="bg-[#7f1d1d] text-white">Overdue</Badge>
   }
 
   return <Badge className="bg-blue-50 text-blue-700">On Track</Badge>

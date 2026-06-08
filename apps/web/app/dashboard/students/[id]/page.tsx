@@ -449,7 +449,7 @@ export default function StudentDetailPage() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center py-16 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-danger-bg text-danger">
+          <span className="flex size-12 items-center justify-center rounded-full bg-[#7f1d1d] text-white">
             <HugeiconsIcon icon={LockIcon} strokeWidth={2} className="size-6" />
           </span>
           <h1 className="mt-4 font-heading text-xl font-semibold">
@@ -535,7 +535,7 @@ export default function StudentDetailPage() {
       </div>
 
       {student.status === "WITHDRAWN" && (
-        <Alert className="border-danger bg-danger-bg text-danger">
+        <Alert variant="destructive">
           <AlertTitle>Withdrawn</AlertTitle>
           <AlertDescription>
             This student has withdrawn from the programme.

@@ -222,10 +222,10 @@ function FeeStatusAlert({ fee }: { fee: FeeDetailsData["fee"] }) {
 
   if (fee.isWaived) {
     return (
-      <Alert className="border-purple-300 bg-purple-50 text-purple-700">
+      <Alert className="border-indigo-950 bg-[#312e81] text-white">
         <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
         <AlertTitle>Fee balance waived</AlertTitle>
-        <AlertDescription className="text-purple-700">
+        <AlertDescription className="text-white/85">
           Your fee balance has been waived. No payment required.
         </AlertDescription>
       </Alert>
@@ -234,7 +234,7 @@ function FeeStatusAlert({ fee }: { fee: FeeDetailsData["fee"] }) {
 
   if (fee.isOverdue && !isFullyPaid) {
     return (
-      <Alert variant="destructive" className="border-danger bg-danger-bg">
+      <Alert variant="destructive">
         <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} />
         <AlertTitle>Overdue</AlertTitle>
         <AlertDescription>
@@ -246,10 +246,10 @@ function FeeStatusAlert({ fee }: { fee: FeeDetailsData["fee"] }) {
 
   if (isFullyPaid) {
     return (
-      <Alert className="border-success bg-success-bg text-success">
+      <Alert className="border-emerald-950 bg-[#14532d] text-white">
         <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
         <AlertTitle>Fully paid</AlertTitle>
-        <AlertDescription className="text-success">
+        <AlertDescription className="text-white/85">
           Your fees are fully paid. No action required.
         </AlertDescription>
       </Alert>
@@ -257,10 +257,10 @@ function FeeStatusAlert({ fee }: { fee: FeeDetailsData["fee"] }) {
   }
 
   return (
-    <Alert className="border-warning bg-warning-bg text-warning">
+    <Alert className="border-red-950 bg-[#7f1d1d] text-white">
       <HugeiconsIcon icon={Clock01Icon} strokeWidth={2} />
       <AlertTitle>Payment due</AlertTitle>
-      <AlertDescription className="text-warning">
+      <AlertDescription className="text-white/85">
         Payment due by {formatDate(fee.dueDate)}.
       </AlertDescription>
     </Alert>

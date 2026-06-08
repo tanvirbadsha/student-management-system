@@ -5,8 +5,11 @@ import Link from "next/link"
 import {
   AlertCircleIcon,
   ArrowRight01Icon,
+  File01Icon,
   CheckmarkCircle02Icon,
   Clock01Icon,
+  Money01Icon,
+  Chart01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -122,6 +125,43 @@ export function StudentDashboard({ userId }: { userId: string }) {
         title={`Welcome back, ${data.student.user.fullName}`}
         subtitle={todayLabel()}
       />
+
+      <section className="space-y-3" aria-labelledby="student-quick-actions">
+        <div>
+          <h2
+            id="student-quick-actions"
+            className="font-heading text-base font-semibold text-text-primary"
+          >
+            Quick Actions
+          </h2>
+          <p className="text-sm text-text-secondary">
+            Continue with your most common student tasks.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <QuickActionCard
+            href="/dashboard/assessments"
+            icon={File01Icon}
+            title="Open Assessments"
+            description="Browse and submit current work."
+            tone="red"
+          />
+          <QuickActionCard
+            href="/dashboard/results"
+            icon={Chart01Icon}
+            title="My Results"
+            description="View published grades and marksheet."
+            tone="blue"
+          />
+          <QuickActionCard
+            href="/dashboard/my-fees"
+            icon={Money01Icon}
+            title="My Fees"
+            description="Check balance and payment history."
+            tone="green"
+          />
+        </div>
+      </section>
 
       <FeeStatusCard data={data} />
 
@@ -249,6 +289,49 @@ export function StudentDashboard({ userId }: { userId: string }) {
   )
 }
 
+function QuickActionCard({
+  href,
+  icon,
+  title,
+  description,
+  tone,
+}: {
+  href: string
+  icon: typeof ArrowRight01Icon
+  title: string
+  description: string
+  tone: "blue" | "green" | "red"
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-md border border-border bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-md text-white shadow-sm",
+            tone === "blue" && "bg-[#075985]",
+            tone === "green" && "bg-[#14532d]",
+            tone === "red" && "bg-[#7f1d1d]"
+          )}
+        >
+          <HugeiconsIcon icon={icon} strokeWidth={2} className="size-5" />
+        </span>
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          strokeWidth={2}
+          className="mt-1 size-4 text-text-muted transition-transform group-hover:translate-x-1 group-hover:text-text-primary"
+        />
+      </div>
+      <h3 className="mt-4 font-heading text-sm font-semibold text-text-primary">
+        {title}
+      </h3>
+      <p className="mt-1 text-sm text-text-secondary">{description}</p>
+    </Link>
+  )
+}
+
 function FeeStatusCard({ data }: { data: StudentDashboardData }) {
   const fee = data.fee
 
@@ -275,28 +358,28 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
     <Card
       id="fee-status"
       className={cn(
-        "border-2",
-        tone === "red" && "border-danger bg-danger-bg",
-        tone === "green" && "border-success bg-success-bg",
-        tone === "amber" && "border-warning bg-warning-bg"
+        "border-0 text-white shadow-md shadow-black/10 [&_[data-slot=card-title]]:text-white",
+        tone === "red" && "bg-[#6f1d1b]",
+        tone === "green" && "bg-[#14532d]",
+        tone === "amber" && "bg-[#7f1d1d]"
       )}
     >
       <CardHeader className="flex flex-row items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface/70">
+        <span
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-md ring-1 ring-white/15",
+            tone === "green" ? "bg-emerald-300/15" : "bg-red-300/15"
+          )}
+        >
           <HugeiconsIcon
             icon={Icon}
             strokeWidth={2}
-            className={cn(
-              "size-5",
-              tone === "red" && "text-danger",
-              tone === "green" && "text-success",
-              tone === "amber" && "text-warning"
-            )}
+            className="size-5 text-white"
           />
         </span>
         <div>
           <CardTitle>Fee Status</CardTitle>
-          <p className="mt-1 text-xs">
+          <p className="mt-1 text-xs font-medium text-white/80">
             {isOverdue
               ? "Payment is overdue"
               : isFullyPaid
@@ -320,14 +403,29 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
         </div>
         <div className="mt-5">
           <div className="mb-2 flex justify-between text-xs">
-            <span>Payment progress</span>
-            <span>{fee.percentagePaid}%</span>
+            <span className="font-medium text-white/80">Payment progress</span>
+            <span className="font-mono font-semibold text-white">
+              {fee.percentagePaid}%
+            </span>
           </div>
-          <Progress value={fee.percentagePaid} className="h-2 bg-surface/70" />
+          <Progress
+            value={fee.percentagePaid}
+            className={cn(
+              "h-2 bg-black/25 [&_[data-slot=progress-indicator]]:bg-white",
+              tone === "green" &&
+                "[&_[data-slot=progress-indicator]]:bg-emerald-100",
+              tone !== "green" &&
+                "[&_[data-slot=progress-indicator]]:bg-red-100"
+            )}
+          />
         </div>
       </CardContent>
       <CardFooter>
-        <Button variant="outline" className="bg-surface/70" asChild>
+        <Button
+          variant="outline"
+          className="border-white/15 bg-white/10 text-white hover:border-white/30 hover:bg-white/15 hover:text-white"
+          asChild
+        >
           <Link href="/dashboard/my-fees">
             View fee details
             <HugeiconsIcon
@@ -344,9 +442,11 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
 
 function FeeValue({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs text-text-secondary">{label}</p>
-      <p className="mt-1 font-mono text-sm font-semibold">{value}</p>
+    <div className="rounded-md bg-black/15 px-3 py-2 ring-1 ring-white/10">
+      <p className="text-xs text-white/70">{label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold text-white">
+        {value}
+      </p>
     </div>
   )
 }
@@ -365,7 +465,7 @@ function SubmissionStatus({
   return (
     <Badge
       className={cn(
-        isLate ? "bg-danger-bg text-danger" : "bg-success-bg text-success"
+        isLate ? "bg-[#7f1d1d] text-white" : "bg-[#14532d] text-white"
       )}
     >
       {isLate ? "Submitted late" : "Submitted on time"}

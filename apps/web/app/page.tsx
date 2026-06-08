@@ -43,14 +43,14 @@ const roleOptions = [
     title: "Staff",
     description: "Manage students, fees, assessments and grades",
     icon: TeacherIcon,
-    accent: "bg-info-bg text-info",
+    accent: "bg-[#075985] text-white",
   },
   {
     role: "STUDENT",
     title: "Student",
     description: "View your submissions, results and fee balance",
     icon: StudentIcon,
-    accent: "bg-success-bg text-success",
+    accent: "bg-[#14532d] text-white",
   },
 ] satisfies Array<{
   role: RoleToggleState
@@ -216,8 +216,8 @@ export default function RoleSelectorPage() {
             )}
 
             {loadState === "error" && (
-              <div className="rounded-lg border border-danger/30 bg-danger-bg p-3">
-                <p className="text-sm text-danger">
+              <div className="rounded-lg border border-red-950 bg-[#7f1d1d] p-3">
+                <p className="text-sm text-white">
                   Could not load users. Please try again.
                 </p>
                 <Button

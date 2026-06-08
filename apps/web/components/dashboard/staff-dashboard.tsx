@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
+import {
+  ArrowRight01Icon,
+  Book02Icon,
+  FileAddIcon,
+  MoneyAdd01Icon,
+  StudentIcon,
+} from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Alert,
@@ -112,6 +118,52 @@ export function StaffDashboard() {
         subtitle="Registry operations overview"
       />
 
+      <section className="space-y-3" aria-labelledby="staff-quick-actions">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2
+              id="staff-quick-actions"
+              className="font-heading text-base font-semibold text-text-primary"
+            >
+              Quick Actions
+            </h2>
+            <p className="text-sm text-text-secondary">
+              Jump straight into common registry work.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <QuickActionCard
+            href="/dashboard/students"
+            icon={StudentIcon}
+            title="Enrol Student"
+            description="Create a student record and initial fee."
+            tone="blue"
+          />
+          <QuickActionCard
+            href="/dashboard/programmes"
+            icon={Book02Icon}
+            title="Programmes"
+            description="Manage programmes and module lists."
+            tone="indigo"
+          />
+          <QuickActionCard
+            href="/dashboard/fees"
+            icon={MoneyAdd01Icon}
+            title="Record Fees"
+            description="Review balances and add payments."
+            tone="green"
+          />
+          <QuickActionCard
+            href="/dashboard/assessments"
+            icon={FileAddIcon}
+            title="Assessments"
+            description="Create tasks and monitor submissions."
+            tone="red"
+          />
+        </div>
+      </section>
+
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard
           label="Total Students"
@@ -138,7 +190,7 @@ export function StaffDashboard() {
       </div>
 
       {data.overdueFees.count > 0 && (
-        <Alert className="border-warning bg-warning-bg text-text-primary">
+        <Alert className="border-orange-950 bg-[#7c2d12] text-white">
           <AlertTitle>Overdue fee balances</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-1">
             <span>
@@ -320,6 +372,50 @@ export function StaffDashboard() {
         </Card>
       )}
     </div>
+  )
+}
+
+function QuickActionCard({
+  href,
+  icon,
+  title,
+  description,
+  tone,
+}: {
+  href: string
+  icon: typeof ArrowRight01Icon
+  title: string
+  description: string
+  tone: "blue" | "green" | "indigo" | "red"
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-md border border-border bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={[
+            "flex size-10 shrink-0 items-center justify-center rounded-md text-white shadow-sm",
+            tone === "blue" ? "bg-[#075985]" : "",
+            tone === "green" ? "bg-[#14532d]" : "",
+            tone === "indigo" ? "bg-[#312e81]" : "",
+            tone === "red" ? "bg-[#7f1d1d]" : "",
+          ].join(" ")}
+        >
+          <HugeiconsIcon icon={icon} strokeWidth={2} className="size-5" />
+        </span>
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          strokeWidth={2}
+          className="mt-1 size-4 text-text-muted transition-transform group-hover:translate-x-1 group-hover:text-text-primary"
+        />
+      </div>
+      <h3 className="mt-4 font-heading text-sm font-semibold text-text-primary">
+        {title}
+      </h3>
+      <p className="mt-1 text-sm text-text-secondary">{description}</p>
+    </Link>
   )
 }
 

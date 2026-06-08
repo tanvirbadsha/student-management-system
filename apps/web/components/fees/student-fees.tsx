@@ -358,18 +358,15 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
   return (
     <div className="space-y-4">
       {fee.isWaived ? (
-        <Alert className="border-purple-300 bg-purple-50 px-4 py-3 text-purple-700">
+        <Alert className="border-indigo-950 bg-[#312e81] px-4 py-3 text-white">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
           <AlertTitle>Fee Waived</AlertTitle>
-          <AlertDescription className="text-purple-700">
+          <AlertDescription className="text-white/85">
             This student&apos;s outstanding fee balance has been waived.
           </AlertDescription>
         </Alert>
       ) : fee.isOverdue && Math.round(fee.outstanding * 100) !== 0 ? (
-        <Alert
-          variant="destructive"
-          className="border-danger bg-danger-bg px-4 py-3"
-        >
+        <Alert variant="destructive" className="px-4 py-3">
           <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} />
           <AlertTitle>Overdue balance</AlertTitle>
           <AlertDescription>
@@ -378,10 +375,10 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
           </AlertDescription>
         </Alert>
       ) : Math.round(fee.outstanding * 100) === 0 ? (
-        <Alert className="border-success bg-success-bg px-4 py-3 text-success">
+        <Alert className="border-emerald-950 bg-[#14532d] px-4 py-3 text-white">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
           <AlertTitle>Fully Paid</AlertTitle>
-          <AlertDescription className="text-success">
+          <AlertDescription className="text-white/85">
             This student has no outstanding fee balance.
           </AlertDescription>
         </Alert>
@@ -884,14 +881,14 @@ const adjustmentTypeOptions: Array<{ value: AdjustmentType; label: string }> = [
 
 function AdjustmentBadge({ type }: { type: AdjustmentType }) {
   if (type === "WAIVER") {
-    return <Badge className="bg-purple-50 text-purple-700">Waiver</Badge>
+    return <Badge className="bg-[#312e81] text-white">Waiver</Badge>
   }
 
   if (type === "CORRECTION") {
-    return <Badge className="bg-warning-bg text-warning">Correction</Badge>
+    return <Badge className="bg-[#7c2d12] text-white">Correction</Badge>
   }
 
-  return <Badge className="bg-success-bg text-success">Discount</Badge>
+  return <Badge className="bg-[#14532d] text-white">Discount</Badge>
 }
 
 function adjustmentHelperText(fee: FeeWithPayments, form: AdjustmentForm) {

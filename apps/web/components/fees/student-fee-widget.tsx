@@ -97,10 +97,10 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
   return (
     <Card
       className={cn(
-        "border-2",
-        tone === "red" && "border-danger bg-danger-bg",
-        tone === "green" && "border-success bg-success-bg",
-        tone === "amber" && "border-warning bg-warning-bg"
+        "border-0 text-white shadow-md [&_[data-slot=card-title]]:text-white",
+        tone === "red" && "bg-[#6f1d1b]",
+        tone === "green" && "bg-[#14532d]",
+        tone === "amber" && "bg-[#7f1d1d]"
       )}
     >
       <CardContent className="flex flex-col justify-between gap-5 py-5 sm:flex-row sm:items-center">
@@ -108,12 +108,7 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
           <HugeiconsIcon
             icon={Icon}
             strokeWidth={2}
-            className={cn(
-              "mt-0.5 size-5 shrink-0",
-              tone === "red" && "text-danger",
-              tone === "green" && "text-success",
-              tone === "amber" && "text-warning"
-            )}
+            className="mt-0.5 size-5 shrink-0 text-white"
           />
           <div>
             <h2 className="font-heading font-semibold">Fee status</h2>
@@ -126,7 +121,11 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
             </p>
           </div>
         </div>
-        <Button variant="outline" className="shrink-0 bg-surface/70" asChild>
+        <Button
+          variant="outline"
+          className="shrink-0 border-white/15 bg-white/10 text-white hover:border-white/30 hover:bg-white/15 hover:text-white"
+          asChild
+        >
           <Link href="/dashboard/my-fees">
             View full fee details
             <HugeiconsIcon

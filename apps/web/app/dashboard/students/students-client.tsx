@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
@@ -98,26 +98,19 @@ const bulkStatusOptions = [
 
 export function StudentsClient() {
   const searchParams = useSearchParams()
-  return (
-    <StudentsView
-      key={searchParams.toString()}
-      initialSearch={searchParams.get("search") ?? ""}
-      queryString={searchParams.toString()}
-    />
-  )
+  return <StudentsView queryString={searchParams.toString()} />
 }
 
 function StudentsView({
-  initialSearch,
   queryString,
 }: {
-  initialSearch: string
   queryString: string
 }) {
   const router = useRouter()
   const { role, isStaff, isStudent } = useRole()
   const params = useMemo(() => new URLSearchParams(queryString), [queryString])
-  const [searchInput, setSearchInput] = useState(initialSearch)
+  const currentSearch = params.get("search") ?? ""
+  const [searchInput, setSearchInput] = useState(currentSearch)
   const [students, setStudents] = useState<StudentWithRelations[]>([])
   const [pagination, setPagination] = useState<Pagination>({
     page: Number(params.get("page")) || 1,
@@ -144,6 +137,29 @@ function StudentsView({
     total: number
   } | null>(null)
 
+  const updateQuery = useCallback(
+    (updates: Record<string, string | null>) => {
+      const nextParams = new URLSearchParams(queryString)
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === "" || value === "ALL") {
+          nextParams.delete(key)
+        } else {
+          nextParams.set(key, value)
+        }
+      }
+
+      const nextQuery = nextParams.toString()
+      router.push(
+        nextQuery === ""
+          ? "/dashboard/students"
+          : `/dashboard/students?${nextQuery}`,
+        { scroll: false }
+      )
+    },
+    [queryString, router]
+  )
+
   useEffect(() => {
     if (isStudent) {
       router.replace("/dashboard")
@@ -160,6 +176,8 @@ function StudentsView({
     const controller = new AbortController()
 
     async function loadStudents() {
+      setIsLoading(true)
+
       try {
         const payload = await fetchApi<
           StudentWithRelations[],
@@ -226,8 +244,14 @@ function StudentsView({
   }, [isStaff])
 
   useEffect(() => {
-    const currentSearch = params.get("search") ?? ""
+    const timeout = window.setTimeout(() => {
+      setSearchInput(currentSearch)
+    }, 0)
 
+    return () => window.clearTimeout(timeout)
+  }, [currentSearch])
+
+  useEffect(() => {
     if (searchInput === currentSearch) {
       return
     }
@@ -237,27 +261,7 @@ function StudentsView({
     }, 300)
 
     return () => window.clearTimeout(timeout)
-  })
-
-  function updateQuery(updates: Record<string, string | null>) {
-    const nextParams = new URLSearchParams(queryString)
-
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === null || value === "" || value === "ALL") {
-        nextParams.delete(key)
-      } else {
-        nextParams.set(key, value)
-      }
-    }
-
-    const nextQuery = nextParams.toString()
-    router.push(
-      nextQuery === ""
-        ? "/dashboard/students"
-        : `/dashboard/students?${nextQuery}`,
-      { scroll: false }
-    )
-  }
+  }, [currentSearch, searchInput, updateQuery])
 
   function clearFilters() {
     router.push("/dashboard/students", { scroll: false })
@@ -823,7 +827,7 @@ function StudentsView({
                     </TableCell>
                     <TableCell>
                       {student.fee?.isOverdue ? (
-                        <Badge className="bg-danger-bg text-danger">
+                        <Badge className="bg-[#7f1d1d] text-white">
                           Overdue
                         </Badge>
                       ) : null}

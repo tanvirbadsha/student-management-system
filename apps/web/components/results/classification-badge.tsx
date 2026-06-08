@@ -6,10 +6,10 @@ import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@/lib/utils"
 
 const classificationClasses: Record<Classification, string> = {
-  [Classification.FAIL]: "bg-danger-bg text-grade-fail",
-  [Classification.PASS]: "bg-info-bg text-grade-pass",
-  [Classification.MERIT]: "bg-warning-bg text-grade-merit",
-  [Classification.DISTINCTION]: "bg-success-bg text-grade-distinction",
+  [Classification.FAIL]: "bg-[#7f1d1d] text-white",
+  [Classification.PASS]: "bg-[#075985] text-white",
+  [Classification.MERIT]: "bg-[#7c2d12] text-white",
+  [Classification.DISTINCTION]: "bg-[#14532d] text-white",
 }
 
 export function ClassificationBadge({

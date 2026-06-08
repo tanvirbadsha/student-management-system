@@ -400,7 +400,7 @@ export default function MarksheetPage() {
                       </TableCell>
                       <TableCell>
                         {result.submission.isLate && (
-                          <Badge className="bg-danger-bg text-danger">
+                          <Badge className="bg-[#7f1d1d] text-white">
                             Late
                           </Badge>
                         )}
@@ -518,16 +518,16 @@ function SummaryCards({ summary }: { summary: MarksheetSummary }) {
 function DistributionPills({ summary }: { summary: MarksheetSummary }) {
   return (
     <div className="flex w-full flex-wrap gap-1.5">
-      <Badge className="bg-danger-bg text-grade-fail">
+      <Badge className="bg-[#7f1d1d] text-white">
         Fail {summary.distribution.FAIL}
       </Badge>
-      <Badge className="bg-info-bg text-grade-pass">
+      <Badge className="bg-[#075985] text-white">
         Pass {summary.distribution.PASS}
       </Badge>
-      <Badge className="bg-warning-bg text-grade-merit">
+      <Badge className="bg-[#7c2d12] text-white">
         Merit {summary.distribution.MERIT}
       </Badge>
-      <Badge className="bg-success-bg text-grade-distinction">
+      <Badge className="bg-[#14532d] text-white">
         Distinction {summary.distribution.DISTINCTION}
       </Badge>
     </div>

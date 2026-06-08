@@ -234,8 +234,8 @@ export default function AssessmentDetailPage() {
               <Badge
                 className={cn(
                   isClosed
-                    ? "bg-danger-bg text-danger"
-                    : "bg-success-bg text-success"
+                    ? "bg-[#7f1d1d] text-white"
+                    : "bg-[#14532d] text-white"
                 )}
               >
                 {isClosed ? "Closed" : "Open"}
@@ -325,9 +325,9 @@ export default function AssessmentDetailPage() {
       )}
 
       {warning !== null && (
-        <Alert className="border-warning bg-warning-bg px-4 py-3 text-warning">
+        <Alert className="border-orange-950 bg-[#7c2d12] px-4 py-3 text-white">
           <AlertTitle>Deadline warning</AlertTitle>
-          <AlertDescription className="text-warning">
+          <AlertDescription className="text-white/85">
             {warning}
           </AlertDescription>
         </Alert>
@@ -372,8 +372,8 @@ export default function AssessmentDetailPage() {
                     <Badge
                       className={cn(
                         submission.isLate
-                          ? "bg-danger-bg text-danger"
-                          : "bg-success-bg text-success"
+                          ? "bg-[#7f1d1d] text-white"
+                          : "bg-[#14532d] text-white"
                       )}
                     >
                       {submission.isLate ? "Late" : "On Time"}

@@ -263,8 +263,8 @@ export function GradingPanel({
                     className={cn(
                       "mt-1",
                       submission.isLate
-                        ? "bg-danger-bg text-danger"
-                        : "bg-success-bg text-success"
+                        ? "bg-[#7f1d1d] text-white"
+                        : "bg-[#14532d] text-white"
                     )}
                   >
                     {submission.isLate ? "Late" : "On Time"}
@@ -292,8 +292,8 @@ export function GradingPanel({
                 <Alert
                   className={cn(
                     result.isPublished
-                      ? "border-success bg-success-bg text-success"
-                      : "border-warning bg-warning-bg text-warning"
+                      ? "border-emerald-950 bg-[#14532d] text-white"
+                      : "border-orange-950 bg-[#7c2d12] text-white"
                   )}
                 >
                   <AlertTitle>
@@ -308,7 +308,7 @@ export function GradingPanel({
               )}
 
               {submission.isLate && (
-                <Alert className="border-warning bg-warning-bg text-warning">
+                <Alert className="border-orange-950 bg-[#7c2d12] text-white">
                   <AlertTitle>Late submission</AlertTitle>
                   <AlertDescription>
                     This is a late submission - submitted on{" "}
@@ -348,7 +348,7 @@ export function GradingPanel({
               </div>
 
               {error !== null && (
-                <Alert className="border-danger bg-danger-bg text-danger">
+                <Alert variant="destructive">
                   <AlertTitle>Could not save result</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
