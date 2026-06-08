@@ -10,6 +10,7 @@ export const assessmentListSelect = {
   id: true,
   title: true,
   deadline: true,
+  isArchived: true,
   createdAt: true,
   updatedAt: true,
   module: {
@@ -58,6 +59,7 @@ export const submissionRelationsSelect = {
       id: true,
       title: true,
       deadline: true,
+      isArchived: true,
       module: {
         select: {
           id: true,

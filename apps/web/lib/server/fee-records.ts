@@ -1,8 +1,9 @@
-import type { Fee, Payment, Prisma } from "@prisma/client"
+import type { Fee, FeeAdjustment, Payment, Prisma } from "@prisma/client"
 
 import type {
   FeeRecord,
   FeeWithPayments,
+  FeeAdjustmentRecord,
   OverdueFeeRecord,
   PaymentRecord,
 } from "@/lib/types"
@@ -10,6 +11,16 @@ import type {
 export const feeWithPaymentsInclude = {
   payments: {
     orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
+  },
+  adjustments: {
+    include: {
+      appliedBy: {
+        select: {
+          fullName: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
   },
 } satisfies Prisma.FeeInclude
 
@@ -34,6 +45,7 @@ export const overdueFeeSelect = {
       dueDate: true,
       amountPaid: true,
       totalAmount: true,
+      isWaived: true,
     },
   },
 } satisfies Prisma.StudentSelect
@@ -67,6 +79,24 @@ export function serializeFee(fee: Fee): FeeRecord {
   }
 }
 
+type FeeAdjustmentWithApplier = FeeAdjustment & {
+  appliedBy: {
+    fullName: string
+  }
+}
+
+export function serializeFeeAdjustment(
+  adjustment: FeeAdjustmentWithApplier
+): FeeAdjustmentRecord {
+  return {
+    ...adjustment,
+    adjustmentType:
+      adjustment.adjustmentType as FeeAdjustmentRecord["adjustmentType"],
+    amount: adjustment.amount?.toNumber() ?? null,
+    createdAt: adjustment.createdAt.toISOString(),
+  }
+}
+
 export function serializeFeeWithPayments(
   fee: FeeWithPaymentsRecord
 ): FeeWithPayments {
@@ -80,6 +110,7 @@ export function serializeFeeWithPayments(
         ? 0
         : Math.round((amountPaid / totalAmount) * 1000) / 10,
     payments: fee.payments.map(serializePayment),
+    adjustments: fee.adjustments.map(serializeFeeAdjustment),
   }
 }
 
@@ -100,6 +131,7 @@ export function serializeOverdueFee(
       dueDate: student.fee.dueDate.toISOString(),
       amountPaid: student.fee.amountPaid.toNumber(),
       totalAmount: student.fee.totalAmount.toNumber(),
+      isWaived: student.fee.isWaived,
     },
   }
 }

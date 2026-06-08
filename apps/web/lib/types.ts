@@ -52,6 +52,7 @@ export type StudentWithRelations = {
     id: string
     outstanding: number
     isOverdue: boolean
+    isWaived: boolean
     dueDate: string
     totalAmount: number
     amountPaid: number
@@ -115,13 +116,28 @@ export type FeeRecord = {
   outstanding: number
   dueDate: string
   isOverdue: boolean
+  isWaived: boolean
   createdAt: string
   updatedAt: string
+}
+
+export type FeeAdjustmentRecord = {
+  id: string
+  feeId: string
+  adjustmentType: "DISCOUNT" | "WAIVER" | "CORRECTION"
+  amount: number | null
+  reason: string
+  appliedById: string
+  createdAt: string
+  appliedBy: {
+    fullName: string
+  }
 }
 
 export type FeeWithPayments = FeeRecord & {
   percentagePaid: number
   payments: PaymentRecord[]
+  adjustments: FeeAdjustmentRecord[]
 }
 
 export type FeeDetailsData = {
@@ -147,6 +163,7 @@ export type OverdueFeeRecord = {
     dueDate: string
     amountPaid: number
     totalAmount: number
+    isWaived: boolean
   }
 }
 
@@ -154,6 +171,7 @@ export type AssessmentWithRelations = {
   id: string
   title: string
   deadline: string
+  isArchived: boolean
   createdAt: string
   updatedAt: string
   module: {
@@ -200,6 +218,7 @@ export type SubmissionWithRelations = {
     id: string
     title: string
     deadline: string
+    isArchived: boolean
     module: {
       id: string
       title: string

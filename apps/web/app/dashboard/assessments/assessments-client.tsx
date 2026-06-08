@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Add01Icon, Calendar01Icon } from "@hugeicons/core-free-icons"
+import {
+  Add01Icon,
+  Calendar01Icon,
+  File01Icon,
+  Upload01Icon,
+} from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -37,9 +42,15 @@ import { toast } from "sonner"
 
 import { EmptyState } from "@/components/ui/empty-state"
 import { PageHeader } from "@/components/ui/page-header"
+import { UploadDialog } from "@/components/submissions/upload-dialog"
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
-import type { AssessmentWithRelations } from "@/lib/types"
+import type {
+  AssessmentWithRelations,
+  PaginatedApiResponse,
+  StudentWithRelations,
+  SubmissionWithRelations,
+} from "@/lib/types"
 import { cn, formatDateTime } from "@/lib/utils"
 
 type ModuleOption = {
@@ -59,6 +70,12 @@ type CreateForm = {
   deadline: string
 }
 
+type AssessmentStatusFilter = "all" | "open" | "closed" | "archived"
+
+type DeleteResponse = {
+  deleted: true
+}
+
 const emptyForm: CreateForm = {
   title: "",
   moduleId: "",
@@ -71,7 +88,12 @@ export function AssessmentsClient() {
   const { role, userId, isStaff, isStudent } = useRole()
   const status = validStatus(searchParams.get("status"))
   const queryString = useMemo(
-    () => (status === "all" ? "" : `?status=${status}`),
+    () =>
+      status === "all"
+        ? ""
+        : status === "archived"
+          ? "?includeArchived=true&isArchived=true"
+          : `?status=${status}`,
     [status]
   )
   const [assessments, setAssessments] = useState<AssessmentWithRelations[]>([])
@@ -86,14 +108,13 @@ export function AssessmentsClient() {
     Partial<Record<keyof CreateForm, string>>
   >({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isStudent) {
-      router.replace("/dashboard")
-    } else if (role === null) {
+    if (role === null) {
       router.replace("/")
     }
-  }, [isStudent, role, router])
+  }, [role, router])
 
   useEffect(() => {
     if (!isStaff) return
@@ -251,6 +272,72 @@ export function AssessmentsClient() {
     }
   }
 
+  async function updateArchiveState(
+    assessment: AssessmentWithRelations,
+    isArchived: boolean
+  ) {
+    if (
+      isArchived &&
+      !window.confirm(
+        "Archive this assessment? Students will no longer be able to submit."
+      )
+    ) {
+      return
+    }
+
+    try {
+      const payload = await fetchApi<AssessmentWithRelations>(
+        `/api/assessments/${assessment.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isArchived }),
+        }
+      )
+
+      if (payload.error !== null) {
+        toast.error(payload.error)
+        return
+      }
+
+      setOpenMenuId(null)
+      setIsLoading(true)
+      setRefreshToken((token) => token + 1)
+      toast.success(isArchived ? "Assessment archived" : "Assessment restored")
+    } catch {
+      toast.error("Could not update assessment")
+    }
+  }
+
+  async function deleteAssessment(assessment: AssessmentWithRelations) {
+    if (!window.confirm("Permanently delete this assessment?")) {
+      return
+    }
+
+    try {
+      const payload = await fetchApi<DeleteResponse>(
+        `/api/assessments/${assessment.id}`,
+        { method: "DELETE" }
+      )
+
+      if (payload.error !== null) {
+        toast.error(payload.error)
+        return
+      }
+
+      setOpenMenuId(null)
+      setIsLoading(true)
+      setRefreshToken((token) => token + 1)
+      toast.success("Assessment deleted")
+    } catch {
+      toast.error("Could not delete assessment")
+    }
+  }
+
+  if (isStudent) {
+    return <StudentAssessmentsView userId={userId} />
+  }
+
   if (!isStaff) return <AssessmentPageLoading />
 
   return (
@@ -275,6 +362,7 @@ export function AssessmentsClient() {
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="open">Open</TabsTrigger>
           <TabsTrigger value="closed">Closed</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -315,6 +403,13 @@ export function AssessmentsClient() {
               key={assessment.id}
               assessment={assessment}
               referenceTime={referenceTime}
+              menuOpen={openMenuId === assessment.id}
+              onMenuOpenChange={(open) =>
+                setOpenMenuId(open ? assessment.id : null)
+              }
+              onArchive={() => updateArchiveState(assessment, true)}
+              onRestore={() => updateArchiveState(assessment, false)}
+              onDelete={() => deleteAssessment(assessment)}
             />
           ))}
         </div>
@@ -408,9 +503,19 @@ export function AssessmentsClient() {
 function AssessmentCard({
   assessment,
   referenceTime,
+  menuOpen,
+  onMenuOpenChange,
+  onArchive,
+  onRestore,
+  onDelete,
 }: {
   assessment: AssessmentWithRelations
   referenceTime: number
+  menuOpen: boolean
+  onMenuOpenChange: (open: boolean) => void
+  onArchive: () => void
+  onRestore: () => void
+  onDelete: () => void
 }) {
   const deadline = new Date(assessment.deadline)
   const hoursRemaining = (deadline.getTime() - referenceTime) / 3_600_000
@@ -418,13 +523,75 @@ function AssessmentCard({
   const isClosingSoon = !isClosed && hoursRemaining <= 48
 
   return (
-    <Card>
+    <Card className={cn(assessment.isArchived && "opacity-60")}>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-base">{assessment.title}</CardTitle>
-          <Badge variant="secondary">
-            <span className="font-mono text-sm">{assessment.module.code}</span>
-          </Badge>
+          <div className="flex items-center gap-2">
+            {assessment.isArchived && <Badge variant="outline">Archived</Badge>}
+            <Badge variant="secondary">
+              <span className="font-mono text-sm">
+                {assessment.module.code}
+              </span>
+            </Badge>
+            <div className="relative">
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Assessment actions"
+                onClick={() => onMenuOpenChange(!menuOpen)}
+              >
+                ...
+              </Button>
+              {menuOpen && (
+                <div className="absolute top-7 right-0 z-20 w-36 rounded-md border border-border bg-surface p-1 shadow-lg">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link href={`/dashboard/assessments/${assessment.id}`}>
+                      Edit
+                    </Link>
+                  </Button>
+                  {assessment.isArchived ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={onRestore}
+                    >
+                      Restore
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={onArchive}
+                    >
+                      Archive
+                    </Button>
+                  )}
+                  {assessment._count.submissions === 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-danger"
+                      onClick={onDelete}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {assessment.module.title}
@@ -466,6 +633,272 @@ function AssessmentCard({
   )
 }
 
+function StudentAssessmentsView({ userId }: { userId: string | null }) {
+  const [student, setStudent] = useState<StudentWithRelations | null>(null)
+  const [assessments, setAssessments] = useState<AssessmentWithRelations[]>([])
+  const [submissions, setSubmissions] = useState<SubmissionWithRelations[]>([])
+  const [selectedAssessment, setSelectedAssessment] =
+    useState<AssessmentWithRelations | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
+
+  useEffect(() => {
+    if (userId === null) return
+    const currentUserId = userId
+    const controller = new AbortController()
+
+    async function loadStudentAssessments() {
+      setIsLoading(true)
+
+      try {
+        const studentPayload = await fetchApi<
+          StudentWithRelations[],
+          PaginatedApiResponse<StudentWithRelations[]>
+        >(`/api/students?userId=${encodeURIComponent(currentUserId)}&limit=1`, {
+          signal: controller.signal,
+        })
+
+        if (studentPayload.error !== null) {
+          throw new Error(studentPayload.error ?? "Could not load student")
+        }
+
+        const currentStudent = studentPayload.data[0]
+        if (currentStudent === undefined) {
+          throw new Error("Student profile not found")
+        }
+
+        const [assessmentsPayload, submissionsPayload] = await Promise.all([
+          fetchApi<AssessmentWithRelations[]>(
+            `/api/assessments?programmeId=${encodeURIComponent(currentStudent.programme.id)}&status=open&isArchived=false`,
+            { signal: controller.signal }
+          ),
+          fetchApi<SubmissionWithRelations[]>(
+            `/api/submissions?studentId=${encodeURIComponent(currentStudent.id)}`,
+            { signal: controller.signal }
+          ),
+        ])
+
+        if (assessmentsPayload.error !== null) {
+          throw new Error(
+            assessmentsPayload.error ?? "Could not load assessments"
+          )
+        }
+
+        if (submissionsPayload.error !== null) {
+          throw new Error(
+            submissionsPayload.error ?? "Could not load submissions"
+          )
+        }
+
+        setStudent(currentStudent)
+        setAssessments(assessmentsPayload.data)
+        setSubmissions(submissionsPayload.data)
+        setLoadError(null)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setLoadError(
+          error instanceof Error ? error.message : "Could not load assessments"
+        )
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false)
+      }
+    }
+
+    void loadStudentAssessments()
+    return () => controller.abort()
+  }, [refreshToken, userId])
+
+  if (isLoading) return <AssessmentPageLoading />
+
+  if (loadError !== null || student === null) {
+    return (
+      <Card>
+        <CardContent className="py-16 text-center">
+          <p className="text-sm text-danger">
+            {loadError ?? "Student profile not found"}
+          </p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => setRefreshToken((token) => token + 1)}
+          >
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const submissionByAssessment = new Map(
+    submissions.map((submission) => [submission.assessmentId, submission])
+  )
+  const selectedSubmission =
+    selectedAssessment === null
+      ? undefined
+      : submissionByAssessment.get(selectedAssessment.id)
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Open Assessments"
+        subtitle="Browse current assessments for your programme"
+      />
+
+      {assessments.length === 0 ? (
+        <EmptyState
+          icon={
+            <HugeiconsIcon
+              icon={Calendar01Icon}
+              strokeWidth={1.8}
+              className="size-5"
+            />
+          }
+          title="No open assessments"
+          description="No open assessments for your programme right now."
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {assessments.map((assessment) => {
+            const submission = submissionByAssessment.get(assessment.id)
+            const enrolmentInactive =
+              student.status === "WITHDRAWN" || student.status === "COMPLETED"
+
+            return (
+              <Card key={assessment.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-base">
+                      {assessment.title}
+                    </CardTitle>
+                    <Badge variant="secondary">
+                      <span className="font-mono text-sm">
+                        {assessment.module.code}
+                      </span>
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-text-secondary">
+                    {assessment.module.title}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <DeadlineCountdown deadline={assessment.deadline} />
+                  <StudentSubmissionStatus submission={submission} />
+
+                  {submission !== undefined && (
+                    <div className="flex items-start gap-2 rounded-md border p-3">
+                      <HugeiconsIcon
+                        icon={File01Icon}
+                        strokeWidth={2}
+                        className="mt-0.5 size-4 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <a
+                          href={submission.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block truncate text-sm font-medium hover:underline"
+                        >
+                          {fileName(submission.fileUrl)}
+                        </a>
+                        <p className="text-xs text-text-secondary">
+                          Submitted {formatDateTime(submission.submittedAt)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full"
+                    variant={submission === undefined ? "default" : "outline"}
+                    disabled={enrolmentInactive}
+                    onClick={() => setSelectedAssessment(assessment)}
+                  >
+                    <HugeiconsIcon
+                      icon={Upload01Icon}
+                      strokeWidth={2}
+                      data-icon="inline-start"
+                    />
+                    {submission === undefined
+                      ? "Submit Now"
+                      : "Replace Submission"}
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      <UploadDialog
+        open={selectedAssessment !== null}
+        assessment={selectedAssessment}
+        student={student}
+        existingSubmission={selectedSubmission}
+        onOpenChange={(open) => {
+          if (!open) setSelectedAssessment(null)
+        }}
+        onUploaded={() => {
+          setIsLoading(true)
+          setRefreshToken((token) => token + 1)
+        }}
+      />
+    </div>
+  )
+}
+
+function DeadlineCountdown({ deadline }: { deadline: string }) {
+  const deadlineDate = new Date(deadline)
+  const now = new Date()
+  const daysRemaining = Math.ceil(
+    (deadlineDate.getTime() - now.getTime()) / 86_400_000
+  )
+  const label =
+    daysRemaining <= 1
+      ? "Closes in 1 day"
+      : `Closes in ${Math.max(1, daysRemaining)} days`
+
+  return (
+    <div
+      className={cn(
+        "text-sm",
+        daysRemaining <= 1 && "text-danger",
+        daysRemaining > 1 && daysRemaining <= 3 && "text-warning",
+        daysRemaining > 3 && "text-success"
+      )}
+    >
+      {label} · {formatDateTime(deadline)}
+    </div>
+  )
+}
+
+function StudentSubmissionStatus({
+  submission,
+}: {
+  submission: SubmissionWithRelations | undefined
+}) {
+  if (submission === undefined) {
+    return <Badge variant="outline">Not submitted</Badge>
+  }
+
+  return (
+    <Badge
+      className={cn(
+        submission.isLate
+          ? "bg-danger-bg text-danger"
+          : "bg-success-bg text-success"
+      )}
+    >
+      {submission.isLate ? "Late Submission" : "Submitted"}
+    </Badge>
+  )
+}
+
+function fileName(fileUrl: string): string {
+  return decodeURIComponent(fileUrl.split("/").pop() ?? fileUrl)
+}
+
 function FormField({
   label,
   error,
@@ -503,8 +936,10 @@ function AssessmentPageLoading() {
   )
 }
 
-function validStatus(value: string | null): "all" | "open" | "closed" {
-  return value === "open" || value === "closed" ? value : "all"
+function validStatus(value: string | null): AssessmentStatusFilter {
+  return value === "open" || value === "closed" || value === "archived"
+    ? value
+    : "all"
 }
 
 function parseErrors(

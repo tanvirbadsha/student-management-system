@@ -28,9 +28,9 @@ const staffLinks = [
 
 const studentLinks = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/submissions", label: "My Submissions" },
+  { href: "/dashboard/assessments", label: "Assessments" },
   { href: "/dashboard/results", label: "My Results" },
-  { href: "/dashboard/fees", label: "My Fees" },
+  { href: "/dashboard/my-fees", label: "My Fees" },
 ]
 
 export function NavShell() {

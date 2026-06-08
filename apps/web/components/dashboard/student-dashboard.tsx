@@ -162,7 +162,7 @@ export function StudentDashboard({ userId }: { userId: string }) {
                     </div>
                     {submission === null && (
                       <Button className="mt-3" size="sm" asChild>
-                        <Link href="/dashboard/submissions">Submit now</Link>
+                        <Link href="/dashboard/assessments">Submit now</Link>
                       </Button>
                     )}
                   </div>
@@ -328,7 +328,7 @@ function FeeStatusCard({ data }: { data: StudentDashboardData }) {
       </CardContent>
       <CardFooter>
         <Button variant="outline" className="bg-surface/70" asChild>
-          <Link href={`/dashboard/students/${data.student.id}?tab=fees`}>
+          <Link href="/dashboard/my-fees">
             View fee details
             <HugeiconsIcon
               icon={ArrowRight01Icon}

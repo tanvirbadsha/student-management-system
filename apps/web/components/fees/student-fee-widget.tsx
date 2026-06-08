@@ -127,7 +127,7 @@ export function StudentFeeWidget({ userId }: { userId: string }) {
           </div>
         </div>
         <Button variant="outline" className="shrink-0 bg-surface/70" asChild>
-          <Link href={`/dashboard/students/${student.id}?tab=fees`}>
+          <Link href="/dashboard/my-fees">
             View full fee details
             <HugeiconsIcon
               icon={ArrowRight01Icon}

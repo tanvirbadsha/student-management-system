@@ -13,6 +13,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@workspace/ui/components/alert"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -67,6 +68,18 @@ type PaymentForm = {
   referenceNumber: string
 }
 
+type AdjustmentType = "DISCOUNT" | "WAIVER" | "CORRECTION"
+
+type AdjustmentForm = {
+  adjustmentType: AdjustmentType
+  amount: string
+  reason: string
+}
+
+type FeeAdjustmentResponse = {
+  fee: FeeRecord
+}
+
 export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
   const [fee, setFee] = useState<FeeWithPayments | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -84,6 +97,14 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     Partial<Record<keyof PaymentForm | "body", string>>
   >({})
   const [isRecording, setIsRecording] = useState(false)
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false)
+  const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentForm>({
+    adjustmentType: "DISCOUNT",
+    amount: "",
+    reason: "",
+  })
+  const [adjustmentError, setAdjustmentError] = useState<string | null>(null)
+  const [isAdjusting, setIsAdjusting] = useState(false)
   const enteredPaymentAmount = Number(paymentForm.amount)
   const exceedsOutstanding =
     fee !== null &&
@@ -237,6 +258,76 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
     }
   }
 
+  async function applyAdjustment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (fee === null) return
+
+    const amount = Number(adjustmentForm.amount)
+
+    if (
+      adjustmentForm.adjustmentType !== "WAIVER" &&
+      (!Number.isFinite(amount) || amount <= 0)
+    ) {
+      setAdjustmentError("Amount must be greater than 0")
+      return
+    }
+
+    if (
+      adjustmentForm.adjustmentType === "DISCOUNT" &&
+      amount >= fee.totalAmount
+    ) {
+      setAdjustmentError("Discount must be less than the current total fee")
+      return
+    }
+
+    if (adjustmentForm.reason.trim() === "") {
+      setAdjustmentError("Reason is required")
+      return
+    }
+
+    setIsAdjusting(true)
+    setAdjustmentError(null)
+
+    try {
+      const payload = await fetchApi<FeeAdjustmentResponse>(
+        `/api/fees/${studentId}/adjust`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            adjustmentType: adjustmentForm.adjustmentType,
+            amount: adjustmentForm.adjustmentType === "WAIVER" ? null : amount,
+            reason: adjustmentForm.reason,
+          }),
+        }
+      )
+
+      if (payload.error !== null) {
+        setAdjustmentError(fieldMessage(payload.error, "Could not adjust fee"))
+        return
+      }
+
+      setAdjustmentOpen(false)
+      resetAdjustmentForm()
+      setFee(await fetchFee())
+      toast.success("Fee adjustment applied")
+    } catch {
+      setAdjustmentError("Could not apply adjustment. Please try again.")
+    } finally {
+      setIsAdjusting(false)
+    }
+  }
+
+  function resetAdjustmentForm() {
+    setAdjustmentForm({
+      adjustmentType: "DISCOUNT",
+      amount: "",
+      reason: "",
+    })
+    setAdjustmentError(null)
+  }
+
   if (isLoading) {
     return <FeeSkeleton />
   }
@@ -265,7 +356,15 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
 
   return (
     <div className="space-y-4">
-      {fee.isOverdue && Math.round(fee.outstanding * 100) !== 0 && (
+      {fee.isWaived ? (
+        <Alert className="border-purple-300 bg-purple-50 px-4 py-3 text-purple-700">
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
+          <AlertTitle>Fee Waived</AlertTitle>
+          <AlertDescription className="text-purple-700">
+            This student&apos;s outstanding fee balance has been waived.
+          </AlertDescription>
+        </Alert>
+      ) : fee.isOverdue && Math.round(fee.outstanding * 100) !== 0 ? (
         <Alert
           variant="destructive"
           className="border-danger bg-danger-bg px-4 py-3"
@@ -277,9 +376,7 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
             immediately.
           </AlertDescription>
         </Alert>
-      )}
-
-      {Math.round(fee.outstanding * 100) === 0 && (
+      ) : Math.round(fee.outstanding * 100) === 0 ? (
         <Alert className="border-success bg-success-bg px-4 py-3 text-success">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} />
           <AlertTitle>Fully Paid</AlertTitle>
@@ -287,12 +384,12 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
             This student has no outstanding fee balance.
           </AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4">
           <CardTitle>Fee summary</CardTitle>
-          {isStaff && fee.outstanding > 0 && (
+          {isStaff && !fee.isWaived && fee.outstanding > 0 && (
             <Button onClick={() => setPaymentOpen(true)}>
               <HugeiconsIcon
                 icon={CreditCardAddIcon}
@@ -398,6 +495,63 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
           </Table>
         )}
       </Card>
+
+      {isStaff && (
+        <Card className="py-0">
+          <CardHeader className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Fee Adjustment History</CardTitle>
+            {!fee.isWaived && fee.outstanding > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  resetAdjustmentForm()
+                  setAdjustmentOpen(true)
+                }}
+              >
+                Apply Adjustment
+              </Button>
+            )}
+          </CardHeader>
+          {fee.adjustments.length === 0 ? (
+            <CardContent className="border-t py-12 text-center text-sm text-text-secondary">
+              No adjustments recorded
+            </CardContent>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Applied By</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fee.adjustments.map((adjustment) => (
+                  <TableRow key={adjustment.id}>
+                    <TableCell>
+                      <AdjustmentBadge type={adjustment.adjustmentType} />
+                    </TableCell>
+                    <TableCell>
+                      {adjustment.amount === null
+                        ? "-"
+                        : formatCurrency(adjustment.amount)}
+                    </TableCell>
+                    <TableCell className="max-w-md whitespace-normal">
+                      {adjustment.reason}
+                    </TableCell>
+                    <TableCell>{adjustment.appliedBy.fullName}</TableCell>
+                    <TableCell>
+                      {formatDateTime(adjustment.createdAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      )}
 
       <Dialog
         open={extendOpen}
@@ -585,8 +739,200 @@ export function StudentFees({ studentId, isStaff }: StudentFeesProps) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={adjustmentOpen}
+        onOpenChange={(open) => {
+          if (!isAdjusting) {
+            setAdjustmentOpen(open)
+            if (!open) resetAdjustmentForm()
+          }
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(event) => {
+            if (isAdjusting) event.preventDefault()
+          }}
+          onPointerDownOutside={(event) => {
+            if (isAdjusting) event.preventDefault()
+          }}
+        >
+          <form onSubmit={applyAdjustment}>
+            <DialogHeader>
+              <DialogTitle>Apply Adjustment</DialogTitle>
+              <DialogDescription>
+                Record a scholarship, waiver, or correction against this fee.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 grid gap-4">
+              <div className="grid gap-2">
+                <Label>Adjustment Type</Label>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {adjustmentTypeOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={
+                        adjustmentForm.adjustmentType === option.value
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => {
+                        setAdjustmentForm((current) => ({
+                          ...current,
+                          adjustmentType: option.value,
+                          amount:
+                            option.value === "WAIVER" ? "" : current.amount,
+                        }))
+                        setAdjustmentError(null)
+                      }}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {adjustmentForm.adjustmentType !== "WAIVER" && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="adjustment-amount">Amount</Label>
+                  <Input
+                    id="adjustment-amount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={adjustmentForm.amount}
+                    disabled={isAdjusting}
+                    onChange={(event) => {
+                      setAdjustmentForm((current) => ({
+                        ...current,
+                        amount: event.target.value,
+                      }))
+                      setAdjustmentError(null)
+                    }}
+                  />
+                  <p className="text-xs text-text-secondary">
+                    {adjustmentHelperText(fee, adjustmentForm)}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="adjustment-reason">Reason</Label>
+                <textarea
+                  id="adjustment-reason"
+                  rows={4}
+                  maxLength={500}
+                  value={adjustmentForm.reason}
+                  disabled={isAdjusting}
+                  className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm transition-colors outline-none placeholder:text-text-muted focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-50"
+                  onChange={(event) => {
+                    setAdjustmentForm((current) => ({
+                      ...current,
+                      reason: event.target.value,
+                    }))
+                    setAdjustmentError(null)
+                  }}
+                />
+                <div className="flex justify-end text-xs text-text-secondary">
+                  {adjustmentForm.reason.length}/500
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm">
+                {adjustmentPreviewText(fee, adjustmentForm)}
+              </div>
+
+              {adjustmentError !== null && (
+                <p className="text-sm text-danger">{adjustmentError}</p>
+              )}
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isAdjusting}
+                onClick={() => setAdjustmentOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isAdjusting}>
+                {isAdjusting ? "Applying..." : "Apply Adjustment"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
+}
+
+const adjustmentTypeOptions: Array<{ value: AdjustmentType; label: string }> = [
+  { value: "DISCOUNT", label: "Scholarship / Discount" },
+  { value: "WAIVER", label: "Fee Waiver" },
+  { value: "CORRECTION", label: "Data Correction" },
+]
+
+function AdjustmentBadge({ type }: { type: AdjustmentType }) {
+  if (type === "WAIVER") {
+    return <Badge className="bg-purple-50 text-purple-700">Waiver</Badge>
+  }
+
+  if (type === "CORRECTION") {
+    return <Badge className="bg-warning-bg text-warning">Correction</Badge>
+  }
+
+  return <Badge className="bg-success-bg text-success">Discount</Badge>
+}
+
+function adjustmentHelperText(fee: FeeWithPayments, form: AdjustmentForm) {
+  const amount = Number(form.amount)
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return form.adjustmentType === "DISCOUNT"
+      ? `Will reduce total from ${formatCurrency(fee.totalAmount)}`
+      : "Will set a new total fee amount"
+  }
+
+  if (form.adjustmentType === "DISCOUNT") {
+    return `Will reduce total from ${formatCurrency(fee.totalAmount)} to ${formatCurrency(Math.max(0, fee.totalAmount - amount))}`
+  }
+
+  return `Will set new total to ${formatCurrency(amount)}`
+}
+
+function adjustmentPreviewText(fee: FeeWithPayments, form: AdjustmentForm) {
+  const preview = calculateAdjustmentPreview(fee, form)
+
+  return `New total: ${formatCurrency(preview.totalAmount)} | New outstanding: ${formatCurrency(preview.outstanding)}`
+}
+
+function calculateAdjustmentPreview(
+  fee: FeeWithPayments,
+  form: AdjustmentForm
+) {
+  if (form.adjustmentType === "WAIVER") {
+    return {
+      totalAmount: fee.totalAmount,
+      outstanding: 0,
+    }
+  }
+
+  const amount = Number(form.amount)
+  const totalAmount =
+    Number.isFinite(amount) && amount > 0
+      ? form.adjustmentType === "DISCOUNT"
+        ? Math.max(0, fee.totalAmount - amount)
+        : amount
+      : fee.totalAmount
+  const amountPaid = Math.min(fee.amountPaid, totalAmount)
+
+  return {
+    totalAmount,
+    outstanding: Math.max(0, totalAmount - amountPaid),
+  }
 }
 
 function SummaryValue({

@@ -23,6 +23,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -66,6 +74,8 @@ export default function AssessmentDetailPage() {
   const [warning, setWarning] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedSubmission, setSelectedSubmission] =
+    useState<SubmissionWithRelations | null>(null)
+  const [previewSubmission, setPreviewSubmission] =
     useState<SubmissionWithRelations | null>(null)
 
   useEffect(() => {
@@ -366,15 +376,17 @@ export default function AssessmentDetailPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon-sm" asChild>
-                      <a
-                        href={submission.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="Download submission"
-                      >
-                        <HugeiconsIcon icon={Download01Icon} strokeWidth={2} />
-                      </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPreviewSubmission(submission)}
+                    >
+                      <HugeiconsIcon
+                        icon={Download01Icon}
+                        strokeWidth={2}
+                        data-icon="inline-start"
+                      />
+                      Preview / Download
                     </Button>
                   </TableCell>
                   <TableCell>
@@ -455,6 +467,52 @@ export default function AssessmentDetailPage() {
           onResultSaved={updateResult}
         />
       )}
+
+      <Dialog
+        open={previewSubmission !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewSubmission(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Preview / Download</DialogTitle>
+            <DialogDescription>
+              {previewSubmission?.fileType === "PDF"
+                ? "PDF submission preview"
+                : "DOCX submission download"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewSubmission?.fileType === "PDF" ? (
+            <iframe
+              title="Submission preview"
+              src={previewSubmission.fileUrl}
+              className="h-[90vh] max-h-[720px] w-full rounded-md border border-border"
+            />
+          ) : (
+            <div className="rounded-md border border-border bg-surface-elevated p-6 text-center">
+              <p className="text-sm text-text-secondary">
+                DOCX files cannot be previewed in the browser.
+              </p>
+              <Button className="mt-4" asChild>
+                <a href={previewSubmission?.fileUrl ?? "#"} download>
+                  Download File
+                </a>
+              </Button>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPreviewSubmission(null)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 

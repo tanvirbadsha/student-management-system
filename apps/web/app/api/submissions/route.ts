@@ -80,6 +80,7 @@ export async function POST(request: Request) {
         select: {
           id: true,
           deadline: true,
+          isArchived: true,
           module: {
             select: { programmeId: true },
           },
@@ -105,6 +106,12 @@ export async function POST(request: Request) {
 
     if (assessment === null) {
       return notFoundError<SubmissionWithRelations>("Assessment not found")
+    }
+
+    if (assessment.isArchived) {
+      return validationError<SubmissionWithRelations>(
+        "This assessment is archived and no longer accepts submissions."
+      )
     }
 
     if (student === null) {

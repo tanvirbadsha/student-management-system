@@ -5,17 +5,26 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
+import { Progress } from "@workspace/ui/components/progress"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@workspace/ui/components/tabs"
 
 import { useRole } from "@/lib/context/role-context"
 import { fetchApi } from "@/lib/api-client"
@@ -162,76 +171,220 @@ export default function FeesPage() {
             />
           </div>
 
-          {overdueFees.length === 0 ? (
-            <EmptyState
-              icon={
-                <HugeiconsIcon
-                  icon={CheckmarkCircle02Icon}
-                  strokeWidth={2}
-                  className="size-5"
+          <Tabs defaultValue="overdue">
+            <TabsList>
+              <TabsTrigger value="overdue">Overdue</TabsTrigger>
+              <TabsTrigger value="all">All Students</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overdue" className="mt-4">
+              {overdueFees.length === 0 ? (
+                <EmptyState
+                  icon={
+                    <HugeiconsIcon
+                      icon={CheckmarkCircle02Icon}
+                      strokeWidth={2}
+                      className="size-5"
+                    />
+                  }
+                  title="No overdue fees"
+                  description="All students are up to date."
                 />
-              }
-              title="No overdue fees"
-              description="All students are up to date."
-            />
-          ) : (
-            <Card className="py-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Programme</TableHead>
-                    <TableHead>Total Fee</TableHead>
-                    <TableHead>Amount Paid</TableHead>
-                    <TableHead>Outstanding</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Days Overdue</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {overdueFees.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-mono font-medium">
-                        {record.studentId}
-                      </TableCell>
-                      <TableCell>{record.fullName}</TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm">
-                          {record.programme.code}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {formatCurrency(record.fee.totalAmount)}
-                      </TableCell>
-                      <TableCell>
-                        {formatCurrency(record.fee.amountPaid)}
-                      </TableCell>
-                      <TableCell className="font-medium text-danger">
-                        {formatCurrency(record.fee.outstanding)}
-                      </TableCell>
-                      <TableCell>{formatDate(record.fee.dueDate)}</TableCell>
-                      <TableCell className="text-danger">
-                        {daysOverdue(record.fee.dueDate)} days overdue
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/dashboard/students/${record.id}`}>
-                            View Student
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
+              ) : (
+                <Card className="py-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Programme</TableHead>
+                        <TableHead>Total Fee</TableHead>
+                        <TableHead>Amount Paid</TableHead>
+                        <TableHead>Outstanding</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Days Overdue</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {overdueFees.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="font-mono font-medium">
+                            {record.studentId}
+                          </TableCell>
+                          <TableCell>{record.fullName}</TableCell>
+                          <TableCell>
+                            <span className="font-mono text-sm">
+                              {record.programme.code}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(record.fee.totalAmount)}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(record.fee.amountPaid)}
+                          </TableCell>
+                          <TableCell className="font-medium text-danger">
+                            {formatCurrency(record.fee.outstanding)}
+                          </TableCell>
+                          <TableCell>
+                            {formatDate(record.fee.dueDate)}
+                          </TableCell>
+                          <TableCell className="text-danger">
+                            {daysOverdue(record.fee.dueDate)} days overdue
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link
+                                href={`/dashboard/students/${record.id}?tab=fees`}
+                              >
+                                View Student
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="all" className="mt-4">
+              <AllStudentFeesTable students={students} />
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>
   )
+}
+
+function AllStudentFeesTable({
+  students,
+}: {
+  students: StudentWithRelations[]
+}) {
+  const totals = students.reduce(
+    (current, student) => ({
+      totalAmount: current.totalAmount + (student.fee?.totalAmount ?? 0),
+      amountPaid: current.amountPaid + (student.fee?.amountPaid ?? 0),
+      outstanding: current.outstanding + (student.fee?.outstanding ?? 0),
+    }),
+    { totalAmount: 0, amountPaid: 0, outstanding: 0 }
+  )
+
+  return (
+    <Card className="py-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Student ID</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Programme</TableHead>
+            <TableHead>Total Fee</TableHead>
+            <TableHead>Paid</TableHead>
+            <TableHead>Outstanding</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead>Payment Progress</TableHead>
+            <TableHead className="text-right">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {students.map((student) => {
+            const fee = student.fee
+            const percentage =
+              fee === null || fee.totalAmount === 0
+                ? 0
+                : Math.min(
+                    100,
+                    Math.round((fee.amountPaid / fee.totalAmount) * 100)
+                  )
+
+            return (
+              <TableRow key={student.id}>
+                <TableCell className="font-mono font-medium">
+                  {student.studentId}
+                </TableCell>
+                <TableCell>{student.user.fullName}</TableCell>
+                <TableCell>
+                  <span className="font-mono text-sm">
+                    {student.programme.code}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {fee === null ? "-" : formatCurrency(fee.totalAmount)}
+                </TableCell>
+                <TableCell>
+                  {fee === null ? "-" : formatCurrency(fee.amountPaid)}
+                </TableCell>
+                <TableCell>
+                  {fee === null ? "-" : formatCurrency(fee.outstanding)}
+                </TableCell>
+                <TableCell>
+                  {fee === null ? (
+                    <Badge variant="outline">No Fee</Badge>
+                  ) : (
+                    <FeeStatusBadge fee={fee} />
+                  )}
+                </TableCell>
+                <TableCell>
+                  {fee === null ? "-" : formatDate(fee.dueDate)}
+                </TableCell>
+                <TableCell>
+                  <div className="min-w-28">
+                    <Progress value={percentage} className="h-1.5" />
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/dashboard/students/${student.id}?tab=fees`}>
+                      View
+                    </Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell className="font-medium">Total</TableCell>
+            <TableCell>-</TableCell>
+            <TableCell>-</TableCell>
+            <TableCell>{formatCurrency(totals.totalAmount)}</TableCell>
+            <TableCell>{formatCurrency(totals.amountPaid)}</TableCell>
+            <TableCell>{formatCurrency(totals.outstanding)}</TableCell>
+            <TableCell>-</TableCell>
+            <TableCell>-</TableCell>
+            <TableCell>-</TableCell>
+            <TableCell>-</TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
+    </Card>
+  )
+}
+
+function FeeStatusBadge({
+  fee,
+}: {
+  fee: NonNullable<StudentWithRelations["fee"]>
+}) {
+  if (fee.isWaived) {
+    return <Badge className="bg-purple-50 text-purple-700">Waived</Badge>
+  }
+
+  if (Math.round(fee.outstanding * 100) === 0) {
+    return <Badge className="bg-success-bg text-success">Fully Paid</Badge>
+  }
+
+  if (fee.isOverdue) {
+    return <Badge className="bg-danger-bg text-danger">Overdue</Badge>
+  }
+
+  return <Badge className="bg-blue-50 text-blue-700">On Track</Badge>
 }
 
 function daysOverdue(dueDate: string): number {

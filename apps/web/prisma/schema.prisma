@@ -57,9 +57,10 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  student       Student?
-  assessments   Assessment[]  @relation("CreatedByUser")
-  authoredNotes StudentNote[] @relation("NoteAuthor")
+  student        Student?
+  assessments    Assessment[]    @relation("CreatedByUser")
+  authoredNotes  StudentNote[]   @relation("NoteAuthor")
+  feeAdjustments FeeAdjustment[] @relation("AdjustmentApplier")
 
   @@map("users")
 }
@@ -146,14 +147,30 @@ model Fee {
   outstanding Decimal  @db.Decimal(10, 2) // totalAmount - amountPaid
   dueDate     DateTime @map("due_date") @db.Date
   isOverdue   Boolean  @default(false) @map("is_overdue")
+  isWaived    Boolean  @default(false) @map("is_waived")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  student  Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  payments Payment[]
+  student     Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  adjustments FeeAdjustment[]
 
   @@map("fees")
+}
+
+model FeeAdjustment {
+  id             String   @id @default(cuid())
+  feeId          String   @map("fee_id")
+  fee            Fee      @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  adjustmentType String   @map("adjustment_type")
+  amount         Decimal? @db.Decimal(10, 2)
+  reason         String   @db.Text
+  appliedById    String   @map("applied_by_id")
+  appliedBy      User     @relation("AdjustmentApplier", fields: [appliedById], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("fee_adjustments")
 }
 
 // ============================================================
@@ -214,6 +231,7 @@ model Assessment {
   createdById String   @map("created_by")
   title       String
   deadline    DateTime
+  isArchived  Boolean  @default(false) @map("is_archived")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

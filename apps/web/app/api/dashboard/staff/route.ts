@@ -31,13 +31,14 @@ export async function GET() {
       prisma.fee.aggregate({
         where: {
           isOverdue: true,
+          isWaived: false,
           outstanding: { gt: 0 },
         },
         _count: { _all: true },
         _sum: { outstanding: true },
       }),
       prisma.assessment.findMany({
-        where: { deadline: { gt: now } },
+        where: { deadline: { gt: now }, isArchived: false },
         select: assessmentListSelect,
         orderBy: { deadline: "asc" },
       }),

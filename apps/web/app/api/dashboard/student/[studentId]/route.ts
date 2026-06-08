@@ -54,6 +54,7 @@ export async function GET(_request: Request, context: RouteContext) {
       prisma.assessment.findMany({
         where: {
           deadline: { gt: now },
+          isArchived: false,
           module: {
             programme: {
               students: {

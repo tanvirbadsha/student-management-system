@@ -29,6 +29,7 @@ export const studentListSelect = {
       id: true,
       outstanding: true,
       isOverdue: true,
+      isWaived: true,
       dueDate: true,
       totalAmount: true,
       amountPaid: true,

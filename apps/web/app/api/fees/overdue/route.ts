@@ -8,6 +8,10 @@ export async function GET() {
       where: {
         fee: {
           isOverdue: true,
+          isWaived: false,
+          outstanding: {
+            gt: 0,
+          },
         },
       },
       select: overdueFeeSelect,

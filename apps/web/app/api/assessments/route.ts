@@ -18,6 +18,8 @@ export async function GET(request: Request) {
   const moduleId = searchParams.get("moduleId")?.trim() ?? ""
   const programmeId = searchParams.get("programmeId")?.trim() ?? ""
   const status = searchParams.get("status")?.trim() ?? ""
+  const includeArchived = searchParams.get("includeArchived") === "true"
+  const isArchivedParam = searchParams.get("isArchived")?.trim() ?? ""
 
   if (status !== "" && status !== "open" && status !== "closed") {
     return validationError<AssessmentWithRelations[]>(
@@ -25,10 +27,25 @@ export async function GET(request: Request) {
     )
   }
 
+  if (
+    isArchivedParam !== "" &&
+    isArchivedParam !== "true" &&
+    isArchivedParam !== "false"
+  ) {
+    return validationError<AssessmentWithRelations[]>(
+      "isArchived: Must be true or false"
+    )
+  }
+
   const now = new Date()
   const where: Prisma.AssessmentWhereInput = {
     ...(moduleId !== "" ? { moduleId } : {}),
     ...(programmeId !== "" ? { module: { programmeId } } : {}),
+    ...(isArchivedParam !== ""
+      ? { isArchived: isArchivedParam === "true" }
+      : includeArchived
+        ? {}
+        : { isArchived: false }),
     ...(status === "open"
       ? { deadline: { gt: now } }
       : status === "closed"

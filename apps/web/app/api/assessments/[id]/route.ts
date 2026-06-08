@@ -1,3 +1,5 @@
+import { Prisma, Role } from "@prisma/client"
+
 import { prisma } from "@/lib/prisma"
 import {
   assessmentDetailSelect,
@@ -19,6 +21,11 @@ type RouteContext = {
 type AssessmentUpdateInput = {
   title?: string
   deadline?: Date
+  isArchived?: boolean
+}
+
+type DeleteAssessmentResponse = {
+  deleted: true
 }
 
 const DEADLINE_WARNING =
@@ -111,6 +118,57 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
+export async function DELETE(request: Request, context: RouteContext) {
+  const { id } = await context.params
+  const role = request.headers.get("x-user-role")?.trim()
+
+  if (role !== Role.STAFF) {
+    return forbiddenError<DeleteAssessmentResponse>("Staff access required")
+  }
+
+  try {
+    const assessment = await prisma.assessment.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            submissions: true,
+          },
+        },
+      },
+    })
+
+    if (assessment === null) {
+      return notFoundError<DeleteAssessmentResponse>("Assessment not found")
+    }
+
+    if (assessment._count.submissions > 0) {
+      return validationError<DeleteAssessmentResponse>(
+        "Cannot delete an assessment that has submissions. Archive it instead or contact IT."
+      )
+    }
+
+    await prisma.assessment.delete({ where: { id } })
+
+    const response: ApiResponse<DeleteAssessmentResponse> = {
+      data: { deleted: true },
+      error: null,
+    }
+
+    return Response.json(response)
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return notFoundError<DeleteAssessmentResponse>("Assessment not found")
+    }
+
+    return internalServerError<DeleteAssessmentResponse>()
+  }
+}
+
 function validateUpdateInput(
   body: unknown
 ): ApiResponse<AssessmentUpdateInput> {
@@ -144,8 +202,16 @@ function validateUpdateInput(
     }
   }
 
+  if ("isArchived" in body) {
+    if (typeof body.isArchived !== "boolean") {
+      errors.push("isArchived: Must be true or false")
+    } else {
+      data.isArchived = body.isArchived
+    }
+  }
+
   if (Object.keys(data).length === 0 && errors.length === 0) {
-    errors.push("body: Provide title or deadline")
+    errors.push("body: Provide title, deadline, or isArchived")
   }
 
   return errors.length > 0
@@ -165,6 +231,11 @@ function validationError<T>(error: string) {
 function notFoundError<T>(error: string) {
   const response: ApiResponse<T> = { data: null, error }
   return Response.json(response, { status: 404 })
+}
+
+function forbiddenError<T>(error: string) {
+  const response: ApiResponse<T> = { data: null, error }
+  return Response.json(response, { status: 403 })
 }
 
 function internalServerError<T>() {

@@ -86,6 +86,13 @@ async function recordPayment(input: PaymentInput) {
             throw new PaymentRequestError("Fee record not found", 404)
           }
 
+          if (fee.isWaived) {
+            throw new PaymentRequestError(
+              "This student's fee has been waived. No payments can be recorded.",
+              400
+            )
+          }
+
           if (input.amount.greaterThan(fee.outstanding)) {
             throw new PaymentRequestError(
               "Payment amount exceeds outstanding balance",
